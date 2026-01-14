@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-
 typedef enum {
 	TT_INC,
 	TT_DEC,
@@ -15,16 +14,26 @@ typedef enum {
 } token;
 
 typedef struct {
+	token *tokens;
+	size_t tokens_length;
+} token_stream;
+
+void destroy_token_stream(token_stream *tok_stream) {
+	free(tok_stream->tokens);
+	free(tok_stream);
+	tok_stream = NULL;
+}
+
+typedef struct {
 	char *buffer;
 	long file_size;
-} brainfuck_program;
+} bf_program;
 
-
-brainfuck_program *open_program(const char *file_path) {
+bf_program *open_program(const char *file_path) {
 	FILE *prog_file;
 
 	if((prog_file = fopen(file_path, "rb"))) {
-		brainfuck_program *prog = (brainfuck_program*) malloc(sizeof(brainfuck_program));
+		bf_program *prog = (bf_program*) malloc(sizeof(bf_program));
 
 		fseek(prog_file, 0, SEEK_END);
 		long file_size = ftell(prog_file);
@@ -46,36 +55,37 @@ brainfuck_program *open_program(const char *file_path) {
 	return NULL;
 }
 
-token *lex_program(brainfuck_program *prog) {
-	token *program_tokens = malloc(prog->file_size * sizeof(token));
+token_stream *lex_program(bf_program *prog) {
+	token_stream *tok_stream = (token_stream*) malloc(sizeof(token_stream));
+	tok_stream->tokens = (token*) malloc(prog->file_size * sizeof(token));
 	size_t token_list_size = 0;
 	size_t buffer_index = 0;
 
 	while (prog->buffer[buffer_index] != '\0') {
 		switch (prog->buffer[buffer_index]) {
 			case '+': {
-				program_tokens[token_list_size++] = TT_INC;
+				tok_stream->tokens[token_list_size++] = TT_INC;
 			} break;
 			case '-': {
-				program_tokens[token_list_size++] = TT_DEC;
+				tok_stream->tokens[token_list_size++] = TT_DEC;
 			} break;
 			case '>': {
-				program_tokens[token_list_size++] = TT_PTR_RIGHT;
+				tok_stream->tokens[token_list_size++] = TT_PTR_RIGHT;
 			} break;
 			case '<': {
-				program_tokens[token_list_size++] = TT_PTR_LEFT;
+				tok_stream->tokens[token_list_size++] = TT_PTR_LEFT;
 			} break;
 			case '[': {
-				program_tokens[token_list_size++] = TT_LOOP_START;
+				tok_stream->tokens[token_list_size++] = TT_LOOP_START;
 			} break;
 			case ']': {
-				program_tokens[token_list_size++] = TT_LOOP_END;
+				tok_stream->tokens[token_list_size++] = TT_LOOP_END;
 			} break;
 			case '.': {
-				program_tokens[token_list_size++] = TT_OUTPUT;
+				tok_stream->tokens[token_list_size++] = TT_OUTPUT;
 			} break;
 			case ',': {
-				program_tokens[token_list_size++] = TT_INPUT;
+				tok_stream->tokens[token_list_size++] = TT_INPUT;
 			} break;
 			default: break;
 		}
@@ -84,37 +94,35 @@ token *lex_program(brainfuck_program *prog) {
 	}
 
 	if (token_list_size > 0) {
-		token *tmp = realloc(program_tokens, token_list_size * sizeof(token));
-		if (tmp != NULL) program_tokens = tmp;
+		token *tmp = realloc(tok_stream->tokens, token_list_size * sizeof(token));
+		if (tmp != NULL) tok_stream->tokens = tmp;
 	} else {
-		free(program_tokens);
-		program_tokens = NULL;
+		free(tok_stream->tokens);
+		tok_stream->tokens = NULL;
 	}
+	
+	tok_stream->tokens_length = token_list_size;
 
-	return program_tokens;
+	return tok_stream;
 }
 
-void close_program(brainfuck_program *prog) {
+void close_program(bf_program *prog) {
 	free(prog->buffer);
 	free(prog);
 	prog = NULL;
 }
 
-
-char *buffer;
-
 int main(int argc, char** argv) {
 	const char *prog_file_path = argv[1];
-	brainfuck_program *prog = open_program(prog_file_path);
-	if(prog == NULL) {
+	bf_program *prog = open_program(prog_file_path);
+	if (prog == NULL) {
 		printf("Error: File '%s' does not exist!\n", prog_file_path);
 		return EXIT_FAILURE;
 	}
 	
-	token *program_tokens = lex_program(prog);
+	token_stream *tok_stream = lex_program(prog);
 
-	free(program_tokens);
-
+	destroy_token_stream(tok_stream);
 	close_program(prog);
 
 	return EXIT_SUCCESS;
