@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 typedef enum {
 	TT_INC,
@@ -11,7 +12,21 @@ typedef enum {
 	TT_LOOP_END,
 	TT_OUTPUT,
 	TT_INPUT
+} token_type;
+
+typedef struct {
+	token_type type;
+	uint32_t line;
+	uint32_t col;
 } token;
+
+token create_token(token_type tok_type, uint32_t line, uint32_t col) {
+	return (token) {
+		.type = tok_type, 
+		.line = line, 
+		.col = col
+	};
+}
 
 typedef struct {
 	token *tokens;
@@ -25,9 +40,11 @@ void destroy_token_stream(token_stream *tok_stream) {
 }
 
 typedef struct {
+	char *program_path;
 	char *buffer;
 	long file_size;
 } bf_program;
+
 
 bf_program *open_program(const char *file_path) {
 	FILE *prog_file;
@@ -41,6 +58,8 @@ bf_program *open_program(const char *file_path) {
 	
 		prog->buffer = (char*) malloc((file_size + 1) * sizeof(char));
 		prog->file_size = file_size;
+		prog->program_path = (char*) malloc(512 * sizeof(char));
+		strcpy(prog->program_path, file_path);
 		
 		if (prog->buffer) {
 			fread(prog->buffer, sizeof(char), prog->file_size, prog_file);
@@ -61,36 +80,45 @@ token_stream *lex_program(bf_program *prog) {
 	size_t token_list_size = 0;
 	size_t buffer_index = 0;
 
+	uint32_t line = 0;
+	uint32_t col = 0;
+
 	while (prog->buffer[buffer_index] != '\0') {
 		switch (prog->buffer[buffer_index]) {
 			case '+': {
-				tok_stream->tokens[token_list_size++] = TT_INC;
+				tok_stream->tokens[token_list_size++] = create_token(TT_INC, line, col);
 			} break;
 			case '-': {
-				tok_stream->tokens[token_list_size++] = TT_DEC;
+				tok_stream->tokens[token_list_size++] = create_token(TT_DEC, line, col);
 			} break;
 			case '>': {
-				tok_stream->tokens[token_list_size++] = TT_PTR_RIGHT;
+				tok_stream->tokens[token_list_size++] = create_token(TT_PTR_RIGHT, line, col);
 			} break;
 			case '<': {
-				tok_stream->tokens[token_list_size++] = TT_PTR_LEFT;
+				tok_stream->tokens[token_list_size++] = create_token(TT_PTR_LEFT, line, col);
 			} break;
 			case '[': {
-				tok_stream->tokens[token_list_size++] = TT_LOOP_START;
+				tok_stream->tokens[token_list_size++] = create_token(TT_LOOP_START, line, col);
 			} break;
 			case ']': {
-				tok_stream->tokens[token_list_size++] = TT_LOOP_END;
+				tok_stream->tokens[token_list_size++] = create_token(TT_LOOP_END, line, col);
 			} break;
 			case '.': {
-				tok_stream->tokens[token_list_size++] = TT_OUTPUT;
+				tok_stream->tokens[token_list_size++] = create_token(TT_OUTPUT, line, col); 
 			} break;
 			case ',': {
-				tok_stream->tokens[token_list_size++] = TT_INPUT;
+				tok_stream->tokens[token_list_size++] = create_token(TT_INPUT, line, col); 
+
+			} break;
+			case '\n': {
+				++line;
+				col = -1;
 			} break;
 			default: break;
 		}
 
 		++buffer_index;
+		++col;
 	}
 
 	if (token_list_size > 0) {
@@ -107,6 +135,7 @@ token_stream *lex_program(bf_program *prog) {
 }
 
 void close_program(bf_program *prog) {
+	free(prog->program_path);
 	free(prog->buffer);
 	free(prog);
 	prog = NULL;
