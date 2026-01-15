@@ -75,7 +75,7 @@ bf_program *create_program(const char *file_path) {
 	return NULL;
 }
 
-token_stream *lex_program(bf_program *prog) {
+token_stream *lex_program(const bf_program *prog) {
 	token_stream *tok_stream = (token_stream*) malloc(sizeof(token_stream));
 	tok_stream->tokens = (token*) malloc(prog->file_size * sizeof(token));
 	size_t token_list_size = 0;
@@ -113,7 +113,9 @@ token_stream *lex_program(bf_program *prog) {
 			} break;
 			case '\n': {
 				++line;
-				col = -1;
+				col = 0;
+				++buffer_index;
+				continue;
 			} break;
 			default: break;
 		}
@@ -142,7 +144,7 @@ void delete_program(bf_program *prog) {
 	prog = NULL;
 }
 
-int64_t *parse_jump_table(token_stream *tok_stream) {
+int64_t *parse_jump_table(const token_stream *tok_stream) {
 	uint32_t n = tok_stream->length;
 	const token *toks = tok_stream->tokens;
 
@@ -190,6 +192,9 @@ void destroy_jump_table(int64_t *jump_table) {
 }
 
 int main(int argc, char** argv) {
+	(void) argc;
+	(void) argv;
+
 	const char *prog_file_path = argv[1];
 	bf_program *program = create_program(prog_file_path);
 	if (program == NULL) {
