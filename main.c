@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,7 +31,7 @@ token create_token(token_type tok_type, uint32_t line, uint32_t col) {
 
 typedef struct {
 	token *tokens;
-	size_t tokens_length;
+	size_t length;
 } token_stream;
 
 void destroy_token_stream(token_stream *tok_stream) {
@@ -46,7 +47,7 @@ typedef struct {
 } bf_program;
 
 
-bf_program *open_program(const char *file_path) {
+bf_program *create_program(const char *file_path) {
 	FILE *prog_file;
 
 	if((prog_file = fopen(file_path, "rb"))) {
@@ -129,30 +130,84 @@ token_stream *lex_program(bf_program *prog) {
 		tok_stream->tokens = NULL;
 	}
 	
-	tok_stream->tokens_length = token_list_size;
+	tok_stream->length = token_list_size;
 
 	return tok_stream;
 }
 
-void close_program(bf_program *prog) {
+void delete_program(bf_program *prog) {
 	free(prog->program_path);
 	free(prog->buffer);
 	free(prog);
 	prog = NULL;
 }
 
+int64_t *parse_jump_table(token_stream *tok_stream) {
+	uint32_t n = tok_stream->length;
+	const token *toks = tok_stream->tokens;
+
+	int64_t *jump_table = malloc(n * sizeof(int64_t));
+	if (!jump_table) return NULL;
+
+	for (size_t i = 0; i < n; ++i) jump_table[i] = -1;
+
+	size_t *stack = malloc(n * sizeof(size_t));
+	if (!stack) { 
+		free(jump_table); 
+		return NULL; 
+	}
+
+	size_t sp = 0;
+
+	for (size_t i = 0; i < n; ++i) {
+		if (toks[i].type == TT_LOOP_START) {
+			stack[sp++] = i;
+		} else if (toks[i].type == TT_LOOP_END) {
+			if (sp == 0) { 
+				free(stack); 
+				free(jump_table); 
+				return NULL; 
+			}
+			size_t j = stack[--sp];
+			jump_table[j] = (int64_t) i;
+			jump_table[i] = (int64_t) j;
+		}
+	}
+
+	free(stack);
+
+	if (sp != 0) {
+		free(jump_table); 
+		return NULL;
+	}
+
+	return jump_table;
+}
+
+void destroy_jump_table(int64_t *jump_table) {
+	free(jump_table);
+	jump_table = NULL;
+}
+
 int main(int argc, char** argv) {
 	const char *prog_file_path = argv[1];
-	bf_program *prog = open_program(prog_file_path);
-	if (prog == NULL) {
+	bf_program *program = create_program(prog_file_path);
+	if (program == NULL) {
 		printf("Error: File '%s' does not exist!\n", prog_file_path);
 		return EXIT_FAILURE;
 	}
 	
-	token_stream *tok_stream = lex_program(prog);
+	token_stream *tok_stream = lex_program(program);
 
+	int64_t *jump_table = parse_jump_table(tok_stream);
+	if (jump_table == NULL) {
+		printf("Error: Mismatched brackets\n");
+		return EXIT_FAILURE;
+	}
+	
+	destroy_jump_table(jump_table);
 	destroy_token_stream(tok_stream);
-	close_program(prog);
+	delete_program(program);
 
 	return EXIT_SUCCESS;
 }
