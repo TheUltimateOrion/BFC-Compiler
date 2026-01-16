@@ -35,15 +35,17 @@ typedef struct {
 } bfc_program_t;
 
 
+
+bfc_program_t *bfc_create_program(const char *file_path);
+void bfc_delete_program(bfc_program_t **pprogram);
+
 bfc_token_t bfc_create_token(bfc_token_type_t tok_type, uint32_t line, uint32_t col); 
 void bfc_destroy_token_stream(bfc_token_stream_t **ptok_stream);
 
-bfc_program_t *bfc_create_program(const char *file_path);
 bfc_token_stream_t *bfc_lex(const bfc_program_t *program);
-void bfc_delete_program(bfc_program_t **pprogram);
 
 ssize_t *bfc_parse_jump_table(const bfc_token_stream_t *tok_stream);
-void bfc_destroy_jump_table(ssize_t **pjump_table); 
+void bfc_destroy_jump_table(ssize_t **pjump_table);
 
 int main(int argc, char** argv) {
 	if (argc < 2) {
