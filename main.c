@@ -15,47 +15,87 @@ typedef enum {
 	TT_LOOP_END,
 	TT_OUTPUT,
 	TT_INPUT
-} token_type;
+} bfc_token_type_t;
 
 typedef struct {
-	token_type type;
+	bfc_token_type_t type;
 	uint32_t line;
 	uint32_t col;
-} token;
-
-token create_token(token_type tok_type, uint32_t line, uint32_t col) {
-	return (token) {
-		.type = tok_type, 
-		.line = line, 
-		.col = col
-	};
-}
+} bfc_token_t;
 
 typedef struct {
-	token *tokens;
+	bfc_token_t *tokens;
 	size_t length;
-} token_stream;
-
-void destroy_token_stream(token_stream **ptok_stream) {
-	if (!ptok_stream || !*ptok_stream) return;
-
-	free((*ptok_stream)->tokens);
-	free(*ptok_stream);
-
-	*ptok_stream = NULL;
-}
+} bfc_token_stream_t;
 
 typedef struct {
 	char *path;
 	char *buffer;
 	size_t file_size;
-} bf_program;
+} bfc_program_t;
 
-bf_program *create_program(const char *file_path) {
+
+bfc_token_t bfc_create_token(bfc_token_type_t tok_type, uint32_t line, uint32_t col); 
+void bfc_destroy_token_stream(bfc_token_stream_t **ptok_stream);
+
+bfc_program_t *bfc_create_program(const char *file_path);
+bfc_token_stream_t *bfc_lex(const bfc_program_t *program);
+void bfc_delete_program(bfc_program_t **pprogram);
+
+ssize_t *bfc_parse_jump_table(const bfc_token_stream_t *tok_stream);
+void bfc_destroy_jump_table(ssize_t **pjump_table); 
+
+int main(int argc, char** argv) {
+	if (argc < 2) {
+    		fprintf(stderr, "Usage: %s <file.bf>\n", argv[0]);
+
+    		return EXIT_FAILURE;
+	}
+
+	int ret = EXIT_FAILURE;
+
+	const char *file_handle_path = argv[1];
+	bfc_program_t *program = bfc_create_program(file_handle_path);
+	if (program == NULL) {
+		fprintf(stderr, "Error: Critical error during reading of file '%s'!\n", file_handle_path);
+		
+		goto end;
+	}
+	
+	bfc_token_stream_t *tok_stream = bfc_lex(program);
+	if (tok_stream == NULL) {
+		fprintf(stderr, "Error: Critical error during lexer tokenization!\n");
+		
+		bfc_delete_program(&program);
+		
+		goto end;
+	}
+
+	ssize_t *jump_table = bfc_parse_jump_table(tok_stream);
+	if (jump_table == NULL) {
+		fprintf(stderr, "Error: Mismatched brackets\n");
+		
+		bfc_destroy_token_stream(&tok_stream);
+		bfc_delete_program(&program);
+
+		goto end;
+	}
+
+	ret = EXIT_SUCCESS;
+
+	bfc_destroy_jump_table(&jump_table);
+	bfc_destroy_token_stream(&tok_stream);
+	bfc_delete_program(&program);
+
+end:
+	return ret;
+}
+
+bfc_program_t *bfc_create_program(const char *file_path) {
 	FILE *file_handle;
 
 	if((file_handle = fopen(file_path, "rb"))) {
-		bf_program *program = (bf_program*) malloc(sizeof(bf_program));
+		bfc_program_t *program = (bfc_program_t*) malloc(sizeof(bfc_program_t));
 		if (!program) {
 			fclose(file_handle);
 
@@ -134,8 +174,35 @@ bf_program *create_program(const char *file_path) {
 	return NULL;
 }
 
-token_stream *lex_program(const bf_program *program) {
-	token_stream *tok_stream = (token_stream*) malloc(sizeof(token_stream));
+void bfc_delete_program(bfc_program_t **pprogram) {
+	if (!pprogram || !*pprogram) return;
+
+	free((*pprogram)->path);
+	free((*pprogram)->buffer);
+	free(*pprogram);
+
+	*pprogram = NULL;
+}
+
+bfc_token_t bfc_create_token(bfc_token_type_t tok_type, uint32_t line, uint32_t col) {
+	return (bfc_token_t) {
+		.type = tok_type, 
+		.line = line, 
+		.col = col
+	};
+}
+
+void bfc_destroy_token_stream(bfc_token_stream_t **ptok_stream) {
+	if (!ptok_stream || !*ptok_stream) return;
+
+	free((*ptok_stream)->tokens);
+	free(*ptok_stream);
+
+	*ptok_stream = NULL;
+}
+
+bfc_token_stream_t *bfc_lex(const bfc_program_t *program) {
+	bfc_token_stream_t *tok_stream = (bfc_token_stream_t*) malloc(sizeof(bfc_token_stream_t));
 	if (!tok_stream) return NULL;
 
 	if (program->file_size == 0) {
@@ -145,7 +212,7 @@ token_stream *lex_program(const bf_program *program) {
     		return tok_stream;
 	}
 
-	tok_stream->tokens = (token*) malloc(program->file_size * sizeof(token));
+	tok_stream->tokens = (bfc_token_t*) malloc(program->file_size * sizeof(bfc_token_t));
 	if (!tok_stream->tokens) {
 		free(tok_stream);
 
@@ -161,28 +228,28 @@ token_stream *lex_program(const bf_program *program) {
 	while (program->buffer[buffer_index] != '\0') {
 		switch (program->buffer[buffer_index]) {
 			case '+': {
-				tok_stream->tokens[token_list_size++] = create_token(TT_INC, line, col);
+				tok_stream->tokens[token_list_size++] = bfc_create_token(TT_INC, line, col);
 			} break;
 			case '-': {
-				tok_stream->tokens[token_list_size++] = create_token(TT_DEC, line, col);
+				tok_stream->tokens[token_list_size++] = bfc_create_token(TT_DEC, line, col);
 			} break;
 			case '>': {
-				tok_stream->tokens[token_list_size++] = create_token(TT_PTR_RIGHT, line, col);
+				tok_stream->tokens[token_list_size++] = bfc_create_token(TT_PTR_RIGHT, line, col);
 			} break;
 			case '<': {
-				tok_stream->tokens[token_list_size++] = create_token(TT_PTR_LEFT, line, col);
+				tok_stream->tokens[token_list_size++] = bfc_create_token(TT_PTR_LEFT, line, col);
 			} break;
 			case '[': {
-				tok_stream->tokens[token_list_size++] = create_token(TT_LOOP_START, line, col);
+				tok_stream->tokens[token_list_size++] = bfc_create_token(TT_LOOP_START, line, col);
 			} break;
 			case ']': {
-				tok_stream->tokens[token_list_size++] = create_token(TT_LOOP_END, line, col);
+				tok_stream->tokens[token_list_size++] = bfc_create_token(TT_LOOP_END, line, col);
 			} break;
 			case '.': {
-				tok_stream->tokens[token_list_size++] = create_token(TT_OUTPUT, line, col); 
+				tok_stream->tokens[token_list_size++] = bfc_create_token(TT_OUTPUT, line, col); 
 			} break;
 			case ',': {
-				tok_stream->tokens[token_list_size++] = create_token(TT_INPUT, line, col); 
+				tok_stream->tokens[token_list_size++] = bfc_create_token(TT_INPUT, line, col); 
 
 			} break;
 			case '\n': {
@@ -199,7 +266,7 @@ token_stream *lex_program(const bf_program *program) {
 	}
 
 	if (token_list_size > 0) {
-		token *tmp = realloc(tok_stream->tokens, token_list_size * sizeof(token));
+		bfc_token_t *tmp = realloc(tok_stream->tokens, token_list_size * sizeof(bfc_token_t));
 		if (tmp) tok_stream->tokens = tmp;
 	} else {
 		free(tok_stream->tokens);
@@ -211,21 +278,11 @@ token_stream *lex_program(const bf_program *program) {
 	return tok_stream;
 }
 
-void delete_program(bf_program **pprogram) {
-	if (!pprogram || !*pprogram) return;
-
-	free((*pprogram)->path);
-	free((*pprogram)->buffer);
-	free(*pprogram);
-
-	*pprogram = NULL;
-}
-
-ssize_t *parse_jump_table(const token_stream *tok_stream) {
+ssize_t *bfc_parse_jump_table(const bfc_token_stream_t *tok_stream) {
 	size_t n = tok_stream->length;
 	if (n == 0) return calloc(1, sizeof(ssize_t));
 
-	const token *toks = tok_stream->tokens;
+	const bfc_token_t *toks = tok_stream->tokens;
 
 	ssize_t *jump_table = malloc(n * sizeof(ssize_t));
 	if (!jump_table) return NULL;
@@ -269,56 +326,10 @@ ssize_t *parse_jump_table(const token_stream *tok_stream) {
 	return jump_table;
 }
 
-void destroy_jump_table(ssize_t **pjump_table) {
+void bfc_destroy_jump_table(ssize_t **pjump_table) {
 	if (!pjump_table || !*pjump_table) return;
 
 	free(*pjump_table);
 
 	*pjump_table = NULL;
-}
-
-int main(int argc, char** argv) {
-	if (argc < 2) {
-    		fprintf(stderr, "Usage: %s <file.bf>\n", argv[0]);
-
-    		return EXIT_FAILURE;
-	}
-
-	int ret = EXIT_FAILURE;
-
-	const char *file_handle_path = argv[1];
-	bf_program *program = create_program(file_handle_path);
-	if (program == NULL) {
-		fprintf(stderr, "Error: Critical error during reading of file '%s'!\n", file_handle_path);
-		
-		goto end;
-	}
-	
-	token_stream *tok_stream = lex_program(program);
-	if (tok_stream == NULL) {
-		fprintf(stderr, "Error: Critical error during lexer tokenization!\n");
-		
-		delete_program(&program);
-		
-		goto end;
-	}
-
-	ssize_t *jump_table = parse_jump_table(tok_stream);
-	if (jump_table == NULL) {
-		fprintf(stderr, "Error: Mismatched brackets\n");
-		
-		destroy_token_stream(&tok_stream);
-		delete_program(&program);
-
-		goto end;
-	}
-
-	ret = EXIT_SUCCESS;
-
-	destroy_jump_table(&jump_table);
-	destroy_token_stream(&tok_stream);
-	delete_program(&program);
-
-end:
-	return ret;
 }
