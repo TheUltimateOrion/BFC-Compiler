@@ -22,10 +22,10 @@ typedef enum {
     BF_ERR_IO,
     BF_ERR_MISMATCHED_BRACKETS,
     BF_ERR_INTERNAL
-} bf_err_code_t;
+} bfc_err_code_t;
 
 typedef struct {
-	bf_err_code_t error_code;
+	bfc_err_code_t error_code;
 	const char *msg;
 } bfc_error_t;
 
@@ -49,7 +49,7 @@ typedef struct {
 } bfc_program_t;
 
 
-bfc_error_t inline bfc_make_error(bf_err_code_t error_code, const char *msg);
+bfc_error_t inline bfc_make_error(bfc_err_code_t error_code, const char *msg);
 
 bfc_program_t *bfc_create_program(const char *file_path);
 void bfc_delete_program(bfc_program_t **pprogram);
@@ -108,7 +108,7 @@ end:
 	return ret;
 }
 
-bfc_error_t inline bfc_make_error(bf_err_code_t error_code, const char *msg) {
+bfc_error_t inline bfc_make_error(bfc_err_code_t error_code, const char *msg) {
 	return (bfc_error_t) {
 		.error_code = error_code,
 		.msg = msg
