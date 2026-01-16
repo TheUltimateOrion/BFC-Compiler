@@ -17,6 +17,20 @@ typedef enum {
 	TT_INPUT
 } bfc_token_type_t;
 
+typedef enum {
+    BF_OK = 0,
+    BF_ERR_IO,
+    BF_ERR_MISMATCHED_BRACKETS,
+    BF_ERR_INTERNAL
+} bf_err_code_t;
+
+typedef struct {
+	bf_err_code_t error_code;
+	const char *msg;
+} bfc_error_t;
+
+#define BF_ERROR_OK ((bfc_error_t) { .error_code = BF_OK, .msg = NULL }) 
+
 typedef struct {
 	bfc_token_type_t type;
 	uint32_t line;
@@ -35,11 +49,12 @@ typedef struct {
 } bfc_program_t;
 
 
+bfc_error_t inline bfc_make_error(bf_err_code_t error_code, const char *msg);
 
 bfc_program_t *bfc_create_program(const char *file_path);
 void bfc_delete_program(bfc_program_t **pprogram);
 
-bfc_token_t bfc_create_token(bfc_token_type_t tok_type, uint32_t line, uint32_t col); 
+bfc_token_t inline bfc_make_token(bfc_token_type_t tok_type, uint32_t line, uint32_t col); 
 void bfc_destroy_token_stream(bfc_token_stream_t **ptok_stream);
 
 bfc_token_stream_t *bfc_lex(const bfc_program_t *program);
@@ -91,6 +106,13 @@ int main(int argc, char** argv) {
 
 end:
 	return ret;
+}
+
+bfc_error_t inline bfc_make_error(bf_err_code_t error_code, const char *msg) {
+	return (bfc_error_t) {
+		.error_code = error_code,
+		.msg = msg
+	};
 }
 
 bfc_program_t *bfc_create_program(const char *file_path) {
@@ -186,7 +208,7 @@ void bfc_delete_program(bfc_program_t **pprogram) {
 	*pprogram = NULL;
 }
 
-bfc_token_t bfc_create_token(bfc_token_type_t tok_type, uint32_t line, uint32_t col) {
+bfc_token_t inline bfc_make_token(bfc_token_type_t tok_type, uint32_t line, uint32_t col) {
 	return (bfc_token_t) {
 		.type = tok_type, 
 		.line = line, 
@@ -230,28 +252,28 @@ bfc_token_stream_t *bfc_lex(const bfc_program_t *program) {
 	while (program->buffer[buffer_index] != '\0') {
 		switch (program->buffer[buffer_index]) {
 			case '+': {
-				tok_stream->tokens[token_list_size++] = bfc_create_token(TT_INC, line, col);
+				tok_stream->tokens[token_list_size++] = bfc_make_token(TT_INC, line, col);
 			} break;
 			case '-': {
-				tok_stream->tokens[token_list_size++] = bfc_create_token(TT_DEC, line, col);
+				tok_stream->tokens[token_list_size++] = bfc_make_token(TT_DEC, line, col);
 			} break;
 			case '>': {
-				tok_stream->tokens[token_list_size++] = bfc_create_token(TT_PTR_RIGHT, line, col);
+				tok_stream->tokens[token_list_size++] = bfc_make_token(TT_PTR_RIGHT, line, col);
 			} break;
 			case '<': {
-				tok_stream->tokens[token_list_size++] = bfc_create_token(TT_PTR_LEFT, line, col);
+				tok_stream->tokens[token_list_size++] = bfc_make_token(TT_PTR_LEFT, line, col);
 			} break;
 			case '[': {
-				tok_stream->tokens[token_list_size++] = bfc_create_token(TT_LOOP_START, line, col);
+				tok_stream->tokens[token_list_size++] = bfc_make_token(TT_LOOP_START, line, col);
 			} break;
 			case ']': {
-				tok_stream->tokens[token_list_size++] = bfc_create_token(TT_LOOP_END, line, col);
+				tok_stream->tokens[token_list_size++] = bfc_make_token(TT_LOOP_END, line, col);
 			} break;
 			case '.': {
-				tok_stream->tokens[token_list_size++] = bfc_create_token(TT_OUTPUT, line, col); 
+				tok_stream->tokens[token_list_size++] = bfc_make_token(TT_OUTPUT, line, col); 
 			} break;
 			case ',': {
-				tok_stream->tokens[token_list_size++] = bfc_create_token(TT_INPUT, line, col); 
+				tok_stream->tokens[token_list_size++] = bfc_make_token(TT_INPUT, line, col); 
 
 			} break;
 			case '\n': {
