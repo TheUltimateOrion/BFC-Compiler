@@ -50,6 +50,7 @@ typedef struct {
 #define BFC_ERROR_OK ((bfc_error_t) { .code = BFC_OK, .msg = NULL, .token = {0} })
 
 bfc_error_t bfc_make_error(const bfc_err_code_t error_code, char *msg);
+bfc_error_t bfc_make_error_with_token(const bfc_err_code_t error_code, char *msg, bfc_token_t token);
 const char *bfc_get_err_str(const bfc_err_code_t error_code);
 void bfc_log_err(const bfc_error_t err, const bfc_program_t *program);
 
@@ -61,7 +62,7 @@ void bfc_destroy_token_stream(bfc_token_stream_t **ptok_stream);
 
 bfc_error_t bfc_lex(const bfc_program_t *program, bfc_token_stream_t **token_stream);
 
-ssize_t *bfc_parse_jump_table(const bfc_token_stream_t *tok_stream);
+bfc_error_t bfc_parse_jump_table(const bfc_token_stream_t *tok_stream, ssize_t **jtable);
 void bfc_destroy_jump_table(ssize_t **pjump_table);
 
 int main(int argc, char** argv) {
@@ -79,7 +80,6 @@ int main(int argc, char** argv) {
 
 	const char *file_path = argv[1];
 	err = bfc_create_program(file_path, &program);
-
 	if (err.code != BFC_OK) {
 		bfc_log_err(err, NULL);
 		
@@ -96,10 +96,11 @@ int main(int argc, char** argv) {
 		goto end;
 	}
 
-	ssize_t *jump_table = bfc_parse_jump_table(tok_stream);
-	if (jump_table == NULL) {
-		fprintf(stderr, "Error: Mismatched brackets\n");
-		
+	ssize_t *jump_table = NULL;
+	err = bfc_parse_jump_table(tok_stream, &jump_table);
+	if (err.code != BFC_OK) {
+		bfc_log_err(err, program);
+
 		bfc_destroy_token_stream(&tok_stream);
 		bfc_delete_program(&program);
 
@@ -119,7 +120,15 @@ end:
 bfc_error_t bfc_make_error(const bfc_err_code_t error_code, char *msg) {
 	return (bfc_error_t) {
 		.code = error_code,
-		.msg = msg
+		.msg = msg,
+	};
+}
+
+bfc_error_t bfc_make_error_with_token(const bfc_err_code_t error_code, char *msg, bfc_token_t token) {
+	return (bfc_error_t) {
+		.code = error_code,
+		.msg = msg,
+		.token = token,
 	};
 }
 
@@ -145,7 +154,7 @@ const char *bfc_get_err_str(const bfc_err_code_t error_code) {
 
 void bfc_log_err(const bfc_error_t err, const bfc_program_t *program) {
 	if (err.code == BFC_ERR_MISMATCHED_BRACKETS) {
-		fprintf(stderr, "%s: %s: %s\n", program->path, bfc_get_err_str(err.code), err.msg);
+		fprintf(stderr, "%s[%d, %d]: %s: %s\n", program->path, err.token.line, err.token.col, bfc_get_err_str(err.code), err.msg);
 		return;
 	}
 
@@ -291,8 +300,8 @@ bfc_error_t bfc_lex(const bfc_program_t *program, bfc_token_stream_t **token_str
 	size_t token_list_size = 0;
 	size_t buffer_index = 0;
 
-	uint32_t line = 0;
-	uint32_t col = 0;
+	uint32_t line = 1;
+	uint32_t col = 1;
 
 	while (program->buffer[buffer_index] != '\0') {
 		switch (program->buffer[buffer_index]) {
@@ -323,7 +332,7 @@ bfc_error_t bfc_lex(const bfc_program_t *program, bfc_token_stream_t **token_str
 			} break;
 			case '\n': {
 				++line;
-				col = 0;
+				col = 1;
 				++buffer_index;
 				continue;
 			} break;
@@ -349,52 +358,67 @@ bfc_error_t bfc_lex(const bfc_program_t *program, bfc_token_stream_t **token_str
 	return BFC_ERROR_OK;
 }
 
-ssize_t *bfc_parse_jump_table(const bfc_token_stream_t *tok_stream) {
+bfc_error_t bfc_parse_jump_table(const bfc_token_stream_t *tok_stream, ssize_t **jtable) {
+	char err_str[512];
+
 	size_t n = tok_stream->length;
-	if (n == 0) return calloc(1, sizeof(ssize_t));
+	if (n == 0) {
+		*jtable = calloc(1, sizeof(ssize_t));
+
+		return BFC_ERROR_OK;
+	}
 
 	const bfc_token_t *toks = tok_stream->tokens;
 
 	ssize_t *jump_table = malloc(n * sizeof(ssize_t));
-	if (!jump_table) return NULL;
-
+	if (!jump_table) return bfc_make_error(BFC_ERR_ALLOC, "Memory allocation failure!");
 	for (size_t i = 0; i < n; ++i) jump_table[i] = -1;
 
 	size_t *stack = malloc(n * sizeof(size_t));
 	if (!stack) { 
 		free(jump_table);
 
-		return NULL; 
+		return bfc_make_error(BFC_ERR_ALLOC, "Memory allocation failure!");
 	}
 
 	size_t sp = 0;
 
-	for (size_t i = 0; i < n; ++i) {
+	size_t i;
+	size_t j;
+	for (i = 0; i < n; ++i) {
 		if (toks[i].type == TT_LOOP_START) {
 			stack[sp++] = i;
 		} else if (toks[i].type == TT_LOOP_END) {
-			if (sp == 0) { 
-				free(stack);
-				free(jump_table);
-
-				return NULL; 
-			}
-			size_t j = stack[--sp];
+			if (sp == 0) goto extra_closing_bracket;
+			j = stack[--sp];
 
 			jump_table[j] = (ssize_t) i;
 			jump_table[i] = (ssize_t) j;
 		}
 	}
+	
+	if (sp != 0) goto mismatched_bracket;
 
 	free(stack);
 
-	if (sp != 0) {
-		free(jump_table);
+	*jtable = jump_table;
+	return BFC_ERROR_OK;
 
-		return NULL;
-	}
+extra_closing_bracket:
+	snprintf(err_str, sizeof(err_str), "Found an extra ']' at line %d.", toks[i].line);
 
-	return jump_table;
+	free(stack);
+	free(jump_table);
+	
+	return bfc_make_error_with_token(BFC_ERR_MISMATCHED_BRACKETS, err_str, toks[i]);
+
+mismatched_bracket:
+	snprintf(err_str, sizeof(err_str), "Missing a closing bracket ']' for opening bracket '[' at line %d.", toks[stack[sp - 1]].line);
+	
+	free(stack);
+	free(jump_table);
+
+	return bfc_make_error_with_token(BFC_ERR_MISMATCHED_BRACKETS, err_str, toks[stack[sp - 1]]);
 }
 
 void bfc_destroy_jump_table(ssize_t **pjump_table) {
