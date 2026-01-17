@@ -18,18 +18,11 @@ typedef enum {
 } bfc_token_type_t;
 
 typedef enum {
-    BF_OK = 0,
-    BF_ERR_IO,
-    BF_ERR_MISMATCHED_BRACKETS,
-    BF_ERR_INTERNAL
+    BFC_OK = 0,
+    BFC_ERR_IO,
+    BFC_ERR_MISMATCHED_BRACKETS,
+    BFC_ERR_INTERNAL
 } bfc_err_code_t;
-
-typedef struct {
-	bfc_err_code_t error_code;
-	const char *msg;
-} bfc_error_t;
-
-#define BF_ERROR_OK ((bfc_error_t) { .error_code = BF_OK, .msg = NULL }) 
 
 typedef struct {
 	bfc_token_type_t type;
@@ -48,13 +41,22 @@ typedef struct {
 	size_t file_size;
 } bfc_program_t;
 
+typedef struct {
+	bfc_err_code_t error_code;
+	char *msg;
+	bfc_token_t token;
+} bfc_error_t;
 
-bfc_error_t inline bfc_make_error(bfc_err_code_t error_code, const char *msg);
+#define BFC_ERROR_OK ((bfc_error_t) { .error_code = BFC_OK, .msg = NULL, .token = {0} })
 
-bfc_program_t *bfc_create_program(const char *file_path);
+bfc_error_t bfc_make_error(const bfc_err_code_t error_code, char *msg);
+const char *bfc_get_err_str(const bfc_err_code_t err_code);
+void bfc_log_err(const bfc_error_t err, const bfc_program_t *program);
+
+bfc_error_t bfc_create_program(const char *file_path, bfc_program_t **program);
 void bfc_delete_program(bfc_program_t **pprogram);
 
-bfc_token_t inline bfc_make_token(bfc_token_type_t tok_type, uint32_t line, uint32_t col); 
+bfc_token_t bfc_make_token(bfc_token_type_t tok_type, uint32_t line, uint32_t col); 
 void bfc_destroy_token_stream(bfc_token_stream_t **ptok_stream);
 
 bfc_token_stream_t *bfc_lex(const bfc_program_t *program);
@@ -71,10 +73,16 @@ int main(int argc, char** argv) {
 
 	int ret = EXIT_FAILURE;
 
-	const char *file_handle_path = argv[1];
-	bfc_program_t *program = bfc_create_program(file_handle_path);
-	if (program == NULL) {
-		fprintf(stderr, "Error: Critical error during reading of file '%s'!\n", file_handle_path);
+	const char *file_path = argv[1];
+
+	bfc_error_t err;
+
+	bfc_program_t *program = NULL;
+	err = bfc_create_program(file_path, &program);
+
+	if (err.error_code != BFC_OK) {
+
+		bfc_log_err(err, NULL);
 		
 		goto end;
 	}
@@ -108,94 +116,130 @@ end:
 	return ret;
 }
 
-bfc_error_t inline bfc_make_error(bfc_err_code_t error_code, const char *msg) {
+bfc_error_t bfc_make_error(const bfc_err_code_t error_code, char *msg) {
 	return (bfc_error_t) {
 		.error_code = error_code,
 		.msg = msg
 	};
 }
 
-bfc_program_t *bfc_create_program(const char *file_path) {
+const char *bfc_get_err_str(const bfc_err_code_t err_code) {
+	switch (err_code) {
+		case BFC_OK: {
+			return "BFC_OK";
+		} break;
+		case BFC_ERR_INTERNAL: {
+			return "BFC_ERR_INTERNAL";
+		} break;
+		case BFC_ERR_IO: {
+			return "BFC_ERR_IO";
+		} break;
+		case BFC_ERR_MISMATCHED_BRACKETS: {
+			return "BFC_ERR_MISMATCHED_BRACKETS";
+		} break;
+		default: {
+			return "Unknown error!";
+		} break;
+	}
+}
+
+void bfc_log_err(const bfc_error_t err, const bfc_program_t *program) {
+	if (err.error_code == BFC_ERR_MISMATCHED_BRACKETS) {
+		fprintf(stderr, "%s: %s: %s\n", program->path, bfc_get_err_str(err.error_code), err.msg);
+		return;
+	}
+
+	fprintf(stderr, "bfc: %s: %s\n", bfc_get_err_str(err.error_code), err.msg);
+}
+
+bfc_error_t bfc_create_program(const char *file_path, bfc_program_t **program) {
 	FILE *file_handle;
 
 	if((file_handle = fopen(file_path, "rb"))) {
-		bfc_program_t *program = (bfc_program_t*) malloc(sizeof(bfc_program_t));
-		if (!program) {
+		bfc_program_t *prog = (bfc_program_t*) malloc(sizeof(bfc_program_t));
+		if (!prog) {
 			fclose(file_handle);
 
-			return NULL;
+			return bfc_make_error(BFC_ERR_INTERNAL, "Memory allocation failure!");
 		}
 
 		int seek_status = fseek(file_handle, 0, SEEK_END);
 		if (seek_status != 0) {
-			free(program);
+			free(prog);
 			fclose(file_handle);
 
-			return NULL;
+			return bfc_make_error(BFC_ERR_INTERNAL, "Unable to seek the end of file!");
 		}
 		long file_size = ftell(file_handle);
 		if (file_size == -1L) {
-			free(program);
+			free(prog);
 			fclose(file_handle);
 
-			return NULL;
+			return bfc_make_error(BFC_ERR_INTERNAL, "Unable to perform ftell on file!");
 		}
 
 		seek_status = fseek(file_handle, 0, SEEK_SET);
 		if (seek_status != 0) {
-			free(program);
+			free(prog);
 			fclose(file_handle);
 
-			return NULL;
+			return bfc_make_error(BFC_ERR_INTERNAL, "Unable to seek the start of file!");
 		}
-	
 		
 		if (file_size < 0 || file_size > (LONG_MAX - 1)) {
-			free(program);
+			free(prog);
 			fclose(file_handle);
 
-			return NULL;
+			return bfc_make_error(BFC_ERR_IO, "Invalid file size!");
 		}
 
-		program->buffer = (char*) malloc((file_size + 1) * sizeof(char));
-		if (!program->buffer) {
-			free(program);
+		prog->buffer = (char*) malloc((file_size + 1) * sizeof(char));
+		if (!prog->buffer) {
+			free(prog);
 			fclose(file_handle);
 
-			return NULL;
+			return bfc_make_error(BFC_ERR_INTERNAL, "Memory allocation failure!");
 		}
 
-		program->file_size = file_size;
+		prog->file_size = file_size;
 
-		program->path = malloc(strlen(file_path) + 1);
-		if (!program->path) { 
-			free(program->buffer); 
-			free(program); 
+		prog->path = malloc(strlen(file_path) + 1);
+		if (!prog->path) { 
+			free(prog->buffer); 
+			free(prog); 
 			fclose(file_handle); 
 
-			return NULL; 
+			return bfc_make_error(BFC_ERR_INTERNAL, "Memory allocation failure!"); 
 		}
 
-		strcpy(program->path, file_path);
+		strcpy(prog->path, file_path);
 
-		size_t end = fread(program->buffer, sizeof(char), program->file_size, file_handle);
-		if (ferror(file_handle) != 0 || end != (size_t) program->file_size) {
-			free(program->path);
-			free(program->buffer);
-			free(program);
+		size_t end = fread(prog->buffer, sizeof(char), prog->file_size, file_handle);
+		if (ferror(file_handle) != 0 || end != (size_t) prog->file_size) {
+			free(prog->path);
+			free(prog->buffer);
+			free(prog);
 			fclose(file_handle);
 
-			return NULL;
+			char err_str[512];
+			snprintf(err_str, sizeof(err_str), "Unable to read from file '%s'!", file_path);
+
+			return bfc_make_error(BFC_ERR_IO, err_str);
 		}
 
-		program->buffer[end] = '\0';
+		prog->buffer[end] = '\0';
 
 		fclose(file_handle);
 
-		return program;
+		*program = prog;
+		return BFC_ERROR_OK;
 	}
 
-	return NULL;
+
+	char err_str[512];
+	snprintf(err_str, sizeof(err_str), "No such file or directory: '%s'", file_path);
+	return bfc_make_error(BFC_ERR_IO, err_str);;
+
 }
 
 void bfc_delete_program(bfc_program_t **pprogram) {
@@ -208,7 +252,7 @@ void bfc_delete_program(bfc_program_t **pprogram) {
 	*pprogram = NULL;
 }
 
-bfc_token_t inline bfc_make_token(bfc_token_type_t tok_type, uint32_t line, uint32_t col) {
+bfc_token_t bfc_make_token(bfc_token_type_t tok_type, uint32_t line, uint32_t col) {
 	return (bfc_token_t) {
 		.type = tok_type, 
 		.line = line, 

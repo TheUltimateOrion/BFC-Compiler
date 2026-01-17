@@ -1,5 +1,5 @@
 CC        := clang
-CFLAGS    := -Wall -Wextra -pedantic -O2 -g
+CFLAGS    := -Wall -Wextra -pedantic -g
 TARGET    := bfc
 OBJ_DIR   := obj
 
