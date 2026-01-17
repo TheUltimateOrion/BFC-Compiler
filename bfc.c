@@ -51,8 +51,8 @@ typedef struct {
 
 bfc_error_t bfc_make_error(const bfc_err_code_t error_code, char *msg);
 bfc_error_t bfc_make_error_with_token(const bfc_err_code_t error_code, char *msg, bfc_token_t token);
-const char *bfc_get_err_str(const bfc_err_code_t error_code);
-void bfc_log_err(const bfc_error_t err, const bfc_program_t *program);
+const char *bfc_get_error_code(const bfc_err_code_t error_code);
+void bfc_log_error(const bfc_error_t err, const bfc_program_t *program);
 
 bfc_error_t bfc_create_program(const char *file_path, bfc_program_t **program);
 void bfc_delete_program(bfc_program_t **pprogram);
@@ -81,7 +81,7 @@ int main(int argc, char** argv) {
 	const char *file_path = argv[1];
 	err = bfc_create_program(file_path, &program);
 	if (err.code != BFC_ERR_OK) {
-		bfc_log_err(err, NULL);
+		bfc_log_error(err, NULL);
 		
 		goto fail;
 	}
@@ -89,7 +89,7 @@ int main(int argc, char** argv) {
 	bfc_token_stream_t *tok_stream = NULL;
 	err = bfc_lex(program, &tok_stream);
 	if (err.code != BFC_ERR_OK) {
-		bfc_log_err(err, program);	
+		bfc_log_error(err, program);	
 			
 		goto fail;
 	}
@@ -97,7 +97,7 @@ int main(int argc, char** argv) {
 	ssize_t *jump_table = NULL;
 	err = bfc_parse_jump_table(tok_stream, &jump_table);
 	if (err.code != BFC_ERR_OK) {
-		bfc_log_err(err, program);
+		bfc_log_error(err, program);
 
 		goto fail;
 	}
@@ -127,7 +127,7 @@ bfc_error_t bfc_make_error_with_token(const bfc_err_code_t error_code, char *msg
 	};
 }
 
-const char *bfc_get_err_str(const bfc_err_code_t error_code) {
+const char *bfc_get_error_code(const bfc_err_code_t error_code) {
 	switch (error_code) {
 		case BFC_ERR_OK: {
 			return "ERROR_OK";
@@ -147,13 +147,13 @@ const char *bfc_get_err_str(const bfc_err_code_t error_code) {
 	}
 }
 
-void bfc_log_err(const bfc_error_t err, const bfc_program_t *program) {
+void bfc_log_error(const bfc_error_t err, const bfc_program_t *program) {
 	if (err.code == BFC_ERR_MISMATCHED_BRACKETS) {
-		fprintf(stderr, "%s[%d, %d]: %s: %s\n", program->path, err.token.line, err.token.col, bfc_get_err_str(err.code), err.msg);
+		fprintf(stderr, "%s[%d, %d]: %s: %s\n", program->path, err.token.line, err.token.col, bfc_get_error_code(err.code), err.msg);
 		return;
 	}
 
-	fprintf(stderr, "bfc: %s: %s\n", bfc_get_err_str(err.code), err.msg);
+	fprintf(stderr, "bfc: %s: %s\n", bfc_get_error_code(err.code), err.msg);
 }
 
 bfc_error_t bfc_create_program(const char *file_path, bfc_program_t **program) {
