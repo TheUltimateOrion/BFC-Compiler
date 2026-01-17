@@ -64,7 +64,7 @@ The CLI is intended to feel familiar if you have used clang:
   
 - [ ] Diagnostics:
 
-  - [ ] Mismatched bracket errors
+  - [x] Mismatched bracket errors
 
   - [ ] Clear, user-facing messages for invalid inputs and file errors
 
