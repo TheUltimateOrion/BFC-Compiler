@@ -21,7 +21,7 @@ typedef enum {
     BFC_OK = 0,
     BFC_ERR_IO,
     BFC_ERR_MISMATCHED_BRACKETS,
-    BFC_ERR_INTERNAL
+    BFC_ERR_ALLOC
 } bfc_err_code_t;
 
 typedef struct {
@@ -42,15 +42,15 @@ typedef struct {
 } bfc_program_t;
 
 typedef struct {
-	bfc_err_code_t error_code;
+	bfc_err_code_t code;
 	char *msg;
 	bfc_token_t token;
 } bfc_error_t;
 
-#define BFC_ERROR_OK ((bfc_error_t) { .error_code = BFC_OK, .msg = NULL, .token = {0} })
+#define BFC_ERROR_OK ((bfc_error_t) { .code = BFC_OK, .msg = NULL, .token = {0} })
 
 bfc_error_t bfc_make_error(const bfc_err_code_t error_code, char *msg);
-const char *bfc_get_err_str(const bfc_err_code_t err_code);
+const char *bfc_get_err_str(const bfc_err_code_t error_code);
 void bfc_log_err(const bfc_error_t err, const bfc_program_t *program);
 
 bfc_error_t bfc_create_program(const char *file_path, bfc_program_t **program);
@@ -59,7 +59,7 @@ void bfc_delete_program(bfc_program_t **pprogram);
 bfc_token_t bfc_make_token(bfc_token_type_t tok_type, uint32_t line, uint32_t col); 
 void bfc_destroy_token_stream(bfc_token_stream_t **ptok_stream);
 
-bfc_token_stream_t *bfc_lex(const bfc_program_t *program);
+bfc_error_t bfc_lex(const bfc_program_t *program, bfc_token_stream_t **token_stream);
 
 ssize_t *bfc_parse_jump_table(const bfc_token_stream_t *tok_stream);
 void bfc_destroy_jump_table(ssize_t **pjump_table);
@@ -73,24 +73,24 @@ int main(int argc, char** argv) {
 
 	int ret = EXIT_FAILURE;
 
-	const char *file_path = argv[1];
-
 	bfc_error_t err;
 
 	bfc_program_t *program = NULL;
+
+	const char *file_path = argv[1];
 	err = bfc_create_program(file_path, &program);
 
-	if (err.error_code != BFC_OK) {
-
+	if (err.code != BFC_OK) {
 		bfc_log_err(err, NULL);
 		
 		goto end;
 	}
 	
-	bfc_token_stream_t *tok_stream = bfc_lex(program);
-	if (tok_stream == NULL) {
-		fprintf(stderr, "Error: Critical error during lexer tokenization!\n");
-		
+	bfc_token_stream_t *tok_stream = NULL;
+	err = bfc_lex(program, &tok_stream);
+	if (err.code != BFC_OK) {
+		bfc_log_err(err, program);	
+	
 		bfc_delete_program(&program);
 		
 		goto end;
@@ -118,18 +118,18 @@ end:
 
 bfc_error_t bfc_make_error(const bfc_err_code_t error_code, char *msg) {
 	return (bfc_error_t) {
-		.error_code = error_code,
+		.code = error_code,
 		.msg = msg
 	};
 }
 
-const char *bfc_get_err_str(const bfc_err_code_t err_code) {
-	switch (err_code) {
+const char *bfc_get_err_str(const bfc_err_code_t error_code) {
+	switch (error_code) {
 		case BFC_OK: {
 			return "BFC_OK";
 		} break;
-		case BFC_ERR_INTERNAL: {
-			return "BFC_ERR_INTERNAL";
+		case BFC_ERR_ALLOC: {
+			return "BFC_ERR_ALLOC";
 		} break;
 		case BFC_ERR_IO: {
 			return "BFC_ERR_IO";
@@ -144,12 +144,12 @@ const char *bfc_get_err_str(const bfc_err_code_t err_code) {
 }
 
 void bfc_log_err(const bfc_error_t err, const bfc_program_t *program) {
-	if (err.error_code == BFC_ERR_MISMATCHED_BRACKETS) {
-		fprintf(stderr, "%s: %s: %s\n", program->path, bfc_get_err_str(err.error_code), err.msg);
+	if (err.code == BFC_ERR_MISMATCHED_BRACKETS) {
+		fprintf(stderr, "%s: %s: %s\n", program->path, bfc_get_err_str(err.code), err.msg);
 		return;
 	}
 
-	fprintf(stderr, "bfc: %s: %s\n", bfc_get_err_str(err.error_code), err.msg);
+	fprintf(stderr, "bfc: %s: %s\n", bfc_get_err_str(err.code), err.msg);
 }
 
 bfc_error_t bfc_create_program(const char *file_path, bfc_program_t **program) {
@@ -160,7 +160,7 @@ bfc_error_t bfc_create_program(const char *file_path, bfc_program_t **program) {
 		if (!prog) {
 			fclose(file_handle);
 
-			return bfc_make_error(BFC_ERR_INTERNAL, "Memory allocation failure!");
+			return bfc_make_error(BFC_ERR_ALLOC, "Memory allocation failure!");
 		}
 
 		int seek_status = fseek(file_handle, 0, SEEK_END);
@@ -168,14 +168,14 @@ bfc_error_t bfc_create_program(const char *file_path, bfc_program_t **program) {
 			free(prog);
 			fclose(file_handle);
 
-			return bfc_make_error(BFC_ERR_INTERNAL, "Unable to seek the end of file!");
+			return bfc_make_error(BFC_ERR_IO, "Unable to seek the end of file!");
 		}
 		long file_size = ftell(file_handle);
 		if (file_size == -1L) {
 			free(prog);
 			fclose(file_handle);
 
-			return bfc_make_error(BFC_ERR_INTERNAL, "Unable to perform ftell on file!");
+			return bfc_make_error(BFC_ERR_IO, "Unable to perform ftell on file!");
 		}
 
 		seek_status = fseek(file_handle, 0, SEEK_SET);
@@ -183,7 +183,7 @@ bfc_error_t bfc_create_program(const char *file_path, bfc_program_t **program) {
 			free(prog);
 			fclose(file_handle);
 
-			return bfc_make_error(BFC_ERR_INTERNAL, "Unable to seek the start of file!");
+			return bfc_make_error(BFC_ERR_IO, "Unable to seek the start of file!");
 		}
 		
 		if (file_size < 0 || file_size > (LONG_MAX - 1)) {
@@ -198,7 +198,7 @@ bfc_error_t bfc_create_program(const char *file_path, bfc_program_t **program) {
 			free(prog);
 			fclose(file_handle);
 
-			return bfc_make_error(BFC_ERR_INTERNAL, "Memory allocation failure!");
+			return bfc_make_error(BFC_ERR_ALLOC, "Memory allocation failure!");
 		}
 
 		prog->file_size = file_size;
@@ -209,7 +209,7 @@ bfc_error_t bfc_create_program(const char *file_path, bfc_program_t **program) {
 			free(prog); 
 			fclose(file_handle); 
 
-			return bfc_make_error(BFC_ERR_INTERNAL, "Memory allocation failure!"); 
+			return bfc_make_error(BFC_ERR_ALLOC, "Memory allocation failure!"); 
 		}
 
 		strcpy(prog->path, file_path);
@@ -269,22 +269,23 @@ void bfc_destroy_token_stream(bfc_token_stream_t **ptok_stream) {
 	*ptok_stream = NULL;
 }
 
-bfc_token_stream_t *bfc_lex(const bfc_program_t *program) {
+bfc_error_t bfc_lex(const bfc_program_t *program, bfc_token_stream_t **token_stream) {
 	bfc_token_stream_t *tok_stream = (bfc_token_stream_t*) malloc(sizeof(bfc_token_stream_t));
-	if (!tok_stream) return NULL;
+	if (!tok_stream) return bfc_make_error(BFC_ERR_ALLOC, "Memory allocation failure!");
 
 	if (program->file_size == 0) {
 		tok_stream->tokens = NULL;
 		tok_stream->length = 0;
 
-    		return tok_stream;
+    		*token_stream = tok_stream;
+		return BFC_ERROR_OK;
 	}
 
 	tok_stream->tokens = (bfc_token_t*) malloc(program->file_size * sizeof(bfc_token_t));
 	if (!tok_stream->tokens) {
 		free(tok_stream);
 
-		return NULL;
+		return bfc_make_error(BFC_ERR_ALLOC, "Memory allocation failure!");
 	}
 
 	size_t token_list_size = 0;
@@ -343,7 +344,9 @@ bfc_token_stream_t *bfc_lex(const bfc_program_t *program) {
 	
 	tok_stream->length = token_list_size;
 
-	return tok_stream;
+	*token_stream = tok_stream;
+
+	return BFC_ERROR_OK;
 }
 
 ssize_t *bfc_parse_jump_table(const bfc_token_stream_t *tok_stream) {
