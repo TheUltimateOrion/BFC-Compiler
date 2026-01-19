@@ -34,15 +34,15 @@ The CLI is intended to feel familiar if you have used clang:
 
 - [ ] Clang-Style CLI 
 
-  - [ ] -o <file> output selection
+  - [x] -o <file> output selection
 
-  - [ ] -S emit assembly
+  - [x] -S emit assembly
 
-  - [ ] -c emit object
+  - [x] -c emit object
 
-  - [ ] --save-temps keep intermediates
+  - [x] --save-temps keep intermediates
 
-  - [ ] --help and --version
+  - [] --help
 
 - [ ] Code generation:
 
@@ -66,7 +66,7 @@ The CLI is intended to feel familiar if you have used clang:
 
   - [x] Mismatched bracket errors
 
-  - [ ] Clear, user-facing messages for invalid inputs and file errors
+  - [x] Clear, user-facing messages for invalid inputs and file errors
 
 - [ ] Tests:
 

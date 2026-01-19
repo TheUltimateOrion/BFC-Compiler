@@ -6,6 +6,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+
+#define COL_OFF     "\033[m"
+#define COL_INFO    "\033[1;1m"
+#define COL_ERROR   "\033[1;31m"
+
 typedef enum {
 	TT_INC,
 	TT_DEC,
@@ -18,11 +23,25 @@ typedef enum {
 } bfc_token_type_t;
 
 typedef enum {
-    BFC_ERR_OK = 0,
-    BFC_ERR_IO,
-    BFC_ERR_MISMATCHED_BRACKETS,
-    BFC_ERR_ALLOC
+	BFC_ERR_OK = 0,
+	BFC_ERR_ARGS,
+	BFC_ERR_IO,
+	BFC_ERR_MISMATCHED_BRACKETS,
+	BFC_ERR_ALLOC
 } bfc_err_code_t;
+
+typedef struct {
+	union {
+		struct {
+			uint8_t do_compile    : 1;
+			uint8_t do_assemble   : 1;
+			uint8_t ask_help      : 1;
+		};
+		uint8_t flags;
+	};
+	char *input;
+	char *outputs[128];
+} bfc_args_t;
 
 typedef struct {
 	bfc_token_type_t type;
@@ -49,6 +68,8 @@ typedef struct {
 
 #define BFC_OK ((bfc_error_t) { .code = BFC_ERR_OK, .msg = NULL, .token = {0} })
 
+bfc_error_t bfc_process_args(int argc, char **argv, bfc_args_t *cmd_args);
+
 bfc_error_t bfc_make_error(const bfc_err_code_t error_code, char *msg);
 bfc_error_t bfc_make_error_with_token(const bfc_err_code_t error_code, char *msg, bfc_token_t token);
 const char *bfc_get_error_code(const bfc_err_code_t error_code);
@@ -66,27 +87,30 @@ bfc_error_t bfc_parse_jump_table(const bfc_token_stream_t *tok_stream, ssize_t *
 void bfc_destroy_jump_table(ssize_t **pjump_table);
 
 int main(int argc, char** argv) {
-	if (argc < 2) {
-    		fprintf(stderr, "Usage: %s <file.bf>\n", argv[0]);
-
-    		return EXIT_FAILURE;
-	}
-
 	int ret = EXIT_FAILURE;
+
+	bfc_args_t cmd_args = {0};
+
+	bfc_program_t *program = NULL;
+	bfc_token_stream_t *tok_stream = NULL;
+	ssize_t *jump_table = NULL;
 
 	bfc_error_t err;
 
-	bfc_program_t *program = NULL;
+	err = bfc_process_args(argc, argv, &cmd_args);
+	if (err.code != BFC_ERR_OK) {
+		bfc_log_error(err, NULL);
 
-	const char *file_path = argv[1];
-	err = bfc_create_program(file_path, &program);
+		goto end;
+	}
+
+	err = bfc_create_program(cmd_args.input, &program);
 	if (err.code != BFC_ERR_OK) {
 		bfc_log_error(err, NULL);
 		
 		goto fail;
 	}
 	
-	bfc_token_stream_t *tok_stream = NULL;
 	err = bfc_lex(program, &tok_stream);
 	if (err.code != BFC_ERR_OK) {
 		bfc_log_error(err, program);	
@@ -94,7 +118,6 @@ int main(int argc, char** argv) {
 		goto fail;
 	}
 
-	ssize_t *jump_table = NULL;
 	err = bfc_parse_jump_table(tok_stream, &jump_table);
 	if (err.code != BFC_ERR_OK) {
 		bfc_log_error(err, program);
@@ -105,10 +128,11 @@ int main(int argc, char** argv) {
 	ret = EXIT_SUCCESS;
 
 fail:
-	bfc_destroy_jump_table(&jump_table);
-	bfc_destroy_token_stream(&tok_stream);
-	bfc_delete_program(&program);
+	if (jump_table != NULL) bfc_destroy_jump_table(&jump_table);
+	if (tok_stream != NULL) bfc_destroy_token_stream(&tok_stream);
+	if (program != NULL) bfc_delete_program(&program);
 
+end:
 	return ret;
 }
 
@@ -132,6 +156,9 @@ const char *bfc_get_error_code(const bfc_err_code_t error_code) {
 		case BFC_ERR_OK: {
 			return "ERROR_OK";
 		} break;
+		case BFC_ERR_ARGS: {
+			return "ERROR_ARGS";
+		} break;
 		case BFC_ERR_ALLOC: {
 			return "ERROR_ALLOC";
 		} break;
@@ -142,19 +169,64 @@ const char *bfc_get_error_code(const bfc_err_code_t error_code) {
 			return "ERROR_MISMATCHED_BRACKETS";
 		} break;
 		default: {
-			return "Unknown error!";
+			return "Unknown error";
 		} break;
 	}
 }
 
 void bfc_log_error(const bfc_error_t err, const bfc_program_t *program) {
 	if (err.code == BFC_ERR_MISMATCHED_BRACKETS) {
-		fprintf(stderr, "%s[%d, %d]: %s: %s\n", program->path, err.token.line, err.token.col, bfc_get_error_code(err.code), err.msg);
+		fprintf(stderr, COL_INFO "%s[%d, %d]: " COL_ERROR "%s" COL_OFF COL_INFO ": %s\n" COL_OFF, program->path, err.token.line, err.token.col, bfc_get_error_code(err.code), err.msg);
 		return;
 	}
 
-	fprintf(stderr, "bfc: %s: %s\n", bfc_get_error_code(err.code), err.msg);
+	fprintf(stderr, COL_INFO "bfc: " COL_ERROR "%s" COL_OFF COL_INFO ": %s\n" COL_OFF, bfc_get_error_code(err.code), err.msg);
 }
+
+bfc_error_t bfc_process_args(int argc, char **argv, bfc_args_t *cmd_args) {
+	cmd_args->flags = 0;
+	cmd_args->input = "";
+	
+	int i = 1;
+	uint8_t output_num = 0;
+	while (i < argc) {
+		if (strcmp(argv[i], "-o") == 0) {
+			if (i == argc - 1) return bfc_make_error(BFC_ERR_ARGS, "Argument to '-o' is missing (expected 1 value)");
+
+			cmd_args->outputs[output_num] = argv[i + 1];
+			++output_num;
+		} else if (strcmp(argv[i], "-S") == 0) {
+			cmd_args->do_assemble = 0x1;
+			cmd_args->do_compile = 0x0;
+		} else if (strcmp(argv[i], "-c") == 0) {
+			if (!cmd_args->do_assemble) cmd_args->do_compile = 0x1;
+		} else if (strcmp(argv[i], "--save-temps") == 0) {
+			if (cmd_args->do_assemble) cmd_args->do_compile = 0x0;
+			else if (cmd_args->do_compile) cmd_args->do_assemble = 0x1;
+			else {
+				cmd_args->do_assemble = 0x1;
+				cmd_args->do_compile = 0x1;
+			}
+		} else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+			cmd_args->ask_help = 0x1;
+		} else if (argv[i][0] == '-') {
+			char err_str[512];
+			snprintf(err_str, sizeof(err_str), "Unknown argument: '%s'", argv[i]);
+
+			return bfc_make_error(BFC_ERR_ARGS, err_str);
+		} else {
+			if (strcmp(cmd_args->input, "") != 0) return bfc_make_error(BFC_ERR_ARGS, "Too many input file paths given!");
+
+			cmd_args->input = argv[i];
+		}
+		++i;
+	}
+
+	if (strcmp(cmd_args->input, "") == 0) return bfc_make_error(BFC_ERR_ARGS, "No input files!");
+
+	return BFC_OK; 
+}
+
 
 bfc_error_t bfc_create_program(const char *file_path, bfc_program_t **program) {
 	FILE *file_handle;
