@@ -23,6 +23,15 @@ typedef enum {
 } bfc_token_type_t;
 
 typedef enum {
+	IR_ADD,
+	IR_MOVE,
+	IR_PUT,
+	IR_GET,
+	IR_SET,
+	IR_LOOP,
+} bfc_ir_token_type_t;
+
+typedef enum {
 	BFC_ERR_OK = 0,
 	BFC_ERR_ARGS,
 	BFC_ERR_IO,
@@ -45,7 +54,7 @@ typedef struct {
 
 typedef struct {
 	bfc_token_type_t type;
-	size_t line;
+size_t line;
 	size_t col;
 } bfc_token_t;
 
@@ -60,6 +69,24 @@ typedef struct {
 	size_t file_size;
 	size_t line_count;
 } bfc_program_t;
+
+struct bfc_ir_block;
+
+typedef struct {
+    bfc_ir_token_type_t op;
+
+    union {
+        int32_t imm;
+        struct bfc_ir_block *body;
+    } val;
+} bfc_ir_instr_t;
+
+typedef struct {
+	bfc_ir_instr_t *instr;
+
+	size_t length;
+	size_t capacity;
+} bfc_ir_block_t;
 
 typedef struct {
 	bfc_err_code_t code;
@@ -79,17 +106,19 @@ void bfc_log_error(const bfc_error_t err, const bfc_program_t *program);
 bfc_error_t bfc_process_args(int argc, char **argv, bfc_args_t *cmd_args);
 
 bfc_error_t bfc_program_create(const char *file_path, bfc_program_t **program);
-void bfc_program_delete(bfc_program_t **pprogram);
+void bfc_program_destroy(bfc_program_t **pprogram);
 const char *bfc_program_getname(const bfc_program_t *program);
 char *bfc_program_getline(const bfc_program_t *program, size_t n);
 
 bfc_token_t bfc_make_token(bfc_token_type_t tok_type, uint32_t line, uint32_t col); 
-void bfc_destroy_token_stream(bfc_token_stream_t **ptok_stream);
-
 bfc_error_t bfc_lex(const bfc_program_t *program, bfc_token_stream_t **token_stream);
+void bfc_destroy_token_stream(bfc_token_stream_t **ptok_stream);
 
 bfc_error_t bfc_parse_jump_table(const bfc_token_stream_t *tok_stream, ssize_t **jump_table);
 void bfc_destroy_jump_table(ssize_t **pjump_table);
+
+bfc_error_t bfc_ir_create(const bfc_token_stream_t *tok_stream, const ssize_t *jump_table, bfc_ir_block_t **root_block);
+void bfc_ir_destroy(bfc_ir_block_t **root_block);
 
 int main(int argc, char** argv) {
 	int ret = EXIT_FAILURE;
@@ -100,6 +129,7 @@ int main(int argc, char** argv) {
 	bfc_program_t *program = NULL;
 	bfc_token_stream_t *tok_stream = NULL;
 	ssize_t *jump_table = NULL;
+	bfc_ir_block_t *root_block = NULL;
 
 	bfc_error_t err;
 
@@ -136,12 +166,21 @@ int main(int argc, char** argv) {
 		goto fail;
 	}
 
+	err = bfc_ir_create(tok_stream, jump_table, &root_block);
+	if (err.code != BFC_ERR_OK) {
+		bfc_log_error(err, program);
+
+		goto fail;
+	}
+
+
 	ret = EXIT_SUCCESS;
 
 fail:
-	if (jump_table != NULL) bfc_destroy_jump_table(&jump_table);
-	if (tok_stream != NULL) bfc_destroy_token_stream(&tok_stream);
-	if (program != NULL) bfc_program_delete(&program);
+	if (jump_table) bfc_destroy_jump_table(&jump_table);
+	if (tok_stream) bfc_destroy_token_stream(&tok_stream);
+	if (program) bfc_program_destroy(&program);
+	if (root_block) bfc_ir_destroy(&root_block);
 
 end:
 	return ret;
@@ -357,7 +396,7 @@ bfc_error_t bfc_program_create(const char *file_path, bfc_program_t **program) {
 
 }
 
-void bfc_program_delete(bfc_program_t **pprogram) {
+void bfc_program_destroy(bfc_program_t **pprogram) {
 	if (!pprogram || !*pprogram) return;
 
 	free((*pprogram)->path);
@@ -583,4 +622,17 @@ void bfc_destroy_jump_table(ssize_t **pjump_table) {
 	free(*pjump_table);
 
 	*pjump_table = NULL;
+}
+
+bfc_error_t bfc_ir_create(const bfc_token_stream_t *tok_stream, const ssize_t *jump_table, bfc_ir_block_t **root_block) {
+	// TODO
+	
+	return BFC_OK;
+}
+void bfc_ir_destroy(bfc_ir_block_t **root_block) {
+	if (!root_block || !*root_block) return;
+
+	free(*root_block);
+
+	*root_block = NULL;
 }
