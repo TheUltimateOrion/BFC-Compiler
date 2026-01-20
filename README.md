@@ -32,17 +32,13 @@ The CLI is intended to feel familiar if you have used clang:
 
 ## TODO
 
-- [ ] Clang-Style CLI 
+- [x] Clang-Style CLI 
 
   - [x] -o <file> output selection
 
   - [x] -S emit assembly
 
-  - [x] -c emit object
-
-  - [x] --save-temps keep intermediates
-
-  - [] --help
+  - [x] --help
 
 - [ ] Code generation:
 
