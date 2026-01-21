@@ -102,10 +102,19 @@ typedef struct {
 	bfc_token_t token;
 } bfc_error_t;
 
-#define BFC_ERR_OK ((bfc_error_t) { .code = ERR_OK, .msg = {0}, .token = {0} })
-#define BFC_MEMORY_ALLOC ((bfc_error_t) { .code = ERR_ALLOC, .msg = "Memory allocation failure!", .token = {0} })
+#define BFC_ERR_OK ((bfc_error_t) {   \
+	.code = ERR_OK,               \
+	.msg = {0},                   \
+	.token = {0}                  \
+})
 
-void bfc_print_help_info(void);
+#define BFC_MEMORY_ALLOC ((bfc_error_t) {      \
+	.code = ERR_ALLOC,                     \
+	.msg = "Memory allocation failure!",   \
+	.token = {0}                           \
+})
+
+void bfc_cmd_help(void);
 
 bfc_error_t bfc_make_error(const bfc_err_code_t error_code, const char *msg);
 bfc_error_t bfc_make_error_with_token(const bfc_err_code_t error_code, const char *msg, bfc_token_t token);
@@ -151,7 +160,7 @@ int main(int argc, char** argv) {
 	}
 
 	if (cmd_args.ask_help) {
-		bfc_print_help_info();
+		bfc_cmd_help();
 		goto end;
 	}
 
@@ -183,7 +192,6 @@ int main(int argc, char** argv) {
 		goto fail;
 	}
 
-
 	ret = EXIT_SUCCESS;
 
 fail:
@@ -196,7 +204,7 @@ end:
 	return ret;
 }
 
-void bfc_print_help_info(void) {
+void bfc_cmd_help(void) {
 	printf("OVERVIEW: bfc Brainfuck compiler\n\n");
 	printf("USAGE: bfc [options] <file.bf>\n\n");
 	printf("OPTIONS:\n");
@@ -269,6 +277,7 @@ void bfc_log_error(const bfc_error_t err, const bfc_program_t *program) {
 		fprintf(stderr, "   %*s | %*c\n", line_num_width, "", (int)err.token.col, '^');
 		
 		free(line_buf);
+
 		return;
 	}
 
@@ -305,6 +314,7 @@ bfc_error_t bfc_process_args(int argc, char **argv, bfc_args_t *cmd_args) {
 
 			cmd_args->input = argv[i];
 		}
+
 		++i;
 	}
 
@@ -510,7 +520,10 @@ bfc_error_t bfc_lex(const bfc_program_t *program, const bfc_args_t cmd_args, bfc
 	uint8_t in_comment = 0;
 
 #define EMIT_TOKEN(toktype) \
-    do { if (!in_comment) tok_stream->tokens[token_list_size++] = bfc_make_token((toktype), line, col); } while (0)
+    do { \
+	if (!in_comment) \
+		tok_stream->tokens[token_list_size++] = bfc_make_token((toktype), line, col); \
+    } while (0)
 
 	while (program->buffer[buffer_index] != '\0') {
 		switch (program->buffer[buffer_index]) {
@@ -676,9 +689,11 @@ bfc_error_t bfc_ir_create(const bfc_token_stream_t *tok_stream, bfc_ir_block_t *
 	bfc_error_t err = BFC_MEMORY_ALLOC;
 	*root_block = NULL;
 	
-	bfc_ir_stack_t stack;
-	stack.capacity = 5;
-	stack.length = 0;
+	bfc_ir_stack_t stack = (bfc_ir_stack_t) {
+		.capacity = 5,
+		.length = 0,
+	};
+
 	stack.blocks = (bfc_ir_block_t**) malloc(stack.capacity * sizeof(bfc_ir_block_t*));
 	if (!stack.blocks) goto end;
 
@@ -696,7 +711,12 @@ bfc_error_t bfc_ir_create(const bfc_token_stream_t *tok_stream, bfc_ir_block_t *
 	while (i < tok_stream->length) {
 		if (stack.length >= stack.capacity) {
 			stack.capacity *= 2;
-			bfc_ir_block_t **tmp = (bfc_ir_block_t**) realloc(stack.blocks, stack.capacity * sizeof(bfc_ir_block_t*));
+
+			bfc_ir_block_t **tmp = (bfc_ir_block_t**) realloc(
+				stack.blocks, 
+				stack.capacity * sizeof(bfc_ir_block_t*)
+			);
+
 			if (!tmp) goto end;
 
 			stack.blocks = tmp;
@@ -743,8 +763,11 @@ bfc_error_t bfc_ir_create(const bfc_token_stream_t *tok_stream, bfc_ir_block_t *
 			case TT_LOOP_START: {
 				bfc_ir_instr_t loop_instr = (bfc_ir_instr_t) {
 					.op = IR_LOOP,
-					.val = { .body = (struct bfc_ir_block_t*) malloc(sizeof(bfc_ir_block_t)) },
+					.val = { 
+						.body = (struct bfc_ir_block_t*) malloc(sizeof(bfc_ir_block_t)) 
+					},
 				};
+
 				if (!loop_instr.val.body) goto end;
 
 				current_block->instr[current_block->length++] = loop_instr;
