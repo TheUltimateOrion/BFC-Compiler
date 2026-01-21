@@ -43,8 +43,9 @@ typedef enum {
 typedef struct {
 	union {
 		struct {
-			uint8_t do_assemble   : 1;
-			uint8_t ask_help      : 1;
+			uint8_t do_assemble        : 1;
+			uint8_t ask_help           : 1;
+			uint8_t f_no_comments : 1;
 		};
 		uint8_t flags;
 	};
@@ -111,7 +112,7 @@ const char *bfc_program_getname(const bfc_program_t *program);
 char *bfc_program_getline(const bfc_program_t *program, size_t n);
 
 bfc_token_t bfc_make_token(bfc_token_type_t tok_type, uint32_t line, uint32_t col); 
-bfc_error_t bfc_lex(const bfc_program_t *program, bfc_token_stream_t **token_stream);
+bfc_error_t bfc_lex(const bfc_program_t *program, const bfc_args_t cmd_args, bfc_token_stream_t **token_stream);
 void bfc_destroy_token_stream(bfc_token_stream_t **ptok_stream);
 
 bfc_error_t bfc_parse_jump_table(const bfc_token_stream_t *tok_stream, ssize_t **jump_table);
@@ -124,7 +125,6 @@ void bfc_ir_destroy(bfc_ir_block_t **root_block);
 
 int main(int argc, char** argv) {
 	int ret = EXIT_FAILURE;
-
 
 	bfc_args_t cmd_args = {0};
 
@@ -154,7 +154,7 @@ int main(int argc, char** argv) {
 		goto fail;
 	}
 	
-	err = bfc_lex(program, &tok_stream);
+	err = bfc_lex(program, cmd_args, &tok_stream);
 	if (err.code != BFC_ERR_OK) {
 		bfc_log_error(err, program);	
 			
@@ -192,10 +192,10 @@ void bfc_print_help_info(void) {
 	printf("OVERVIEW: bfc Brainfuck compiler\n\n");
 	printf("USAGE: bfc [options] <file.bf>\n\n");
 	printf("OPTIONS:\n");
-	printf("  %-20s %s\n", "--help / -h", "Display available options");
-	printf("  %-20s %s\n", "-o <file>",   "Write output to <file>");
-	printf("  %-20s %s\n", "-S",          "Only run compilation steps");
-	
+	printf("  %-20s %s\n", "--fno-comments", "Do not treat lines starting with ';' as comments (for compatibility)");
+	printf("  %-20s %s\n", "--help / -h",    "Display available options");
+	printf("  %-20s %s\n", "-o <file>",      "Write output to <file>");
+	printf("  %-20s %s\n", "-S",             "Only run compilation steps");
 }
 
 bfc_error_t bfc_make_error(const bfc_err_code_t error_code, const char *msg) {
@@ -285,6 +285,8 @@ bfc_error_t bfc_process_args(int argc, char **argv, bfc_args_t *cmd_args) {
 			cmd_args->ask_help = 0x1;
 			
 			return BFC_OK;
+		} else if (strcmp(argv[i], "--fno-comments") == 0) {
+			cmd_args->f_no_comments = 1;
 		} else if (argv[i][0] == '-') {
 			char err_str[512];
 			snprintf(err_str, sizeof(err_str), "Unknown argument: '%s'", argv[i]);
@@ -472,7 +474,7 @@ void bfc_destroy_token_stream(bfc_token_stream_t **ptok_stream) {
 	*ptok_stream = NULL;
 }
 
-bfc_error_t bfc_lex(const bfc_program_t *program, bfc_token_stream_t **token_stream) {
+bfc_error_t bfc_lex(const bfc_program_t *program, const bfc_args_t cmd_args, bfc_token_stream_t **token_stream) {
 	bfc_token_stream_t *tok_stream = (bfc_token_stream_t*) malloc(sizeof(bfc_token_stream_t));
 	if (!tok_stream) return bfc_make_error(BFC_ERR_ALLOC, "Memory allocation failure!");
 
@@ -505,6 +507,8 @@ bfc_error_t bfc_lex(const bfc_program_t *program, bfc_token_stream_t **token_str
 	while (program->buffer[buffer_index] != '\0') {
 		switch (program->buffer[buffer_index]) {
 			case ';': {
+				if (cmd_args.f_no_comments) break;
+
 				in_comment = 1;
 			} break;
 			case '+': {
