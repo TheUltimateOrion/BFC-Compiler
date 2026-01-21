@@ -32,12 +32,12 @@ typedef enum {
 } bfc_ir_token_type_t;
 
 typedef enum {
-	BFC_ERR_OK = 0,
-	BFC_ERR_ARGS,
-	BFC_ERR_IO,
-	BFC_ERR_MISMATCHED_BRACKET,
-	BFC_ERR_MISSING_BRACKET,
-	BFC_ERR_ALLOC
+	ERR_OK = 0,
+	ERR_ARGS,
+	ERR_IO,
+	ERR_MISMATCHED_BRACKET,
+	ERR_MISSING_BRACKET,
+	ERR_ALLOC
 } bfc_err_code_t;
 
 typedef struct {
@@ -102,8 +102,8 @@ typedef struct {
 	bfc_token_t token;
 } bfc_error_t;
 
-#define BFC_OK ((bfc_error_t) { .code = BFC_ERR_OK, .msg = {0}, .token = {0} })
-#define BFC_MEMORY_ALLOC ((bfc_error_t) { .code = BFC_ERR_ALLOC, .msg = "Memory allocation failure!", .token = {0} })
+#define BFC_ERR_OK ((bfc_error_t) { .code = ERR_OK, .msg = {0}, .token = {0} })
+#define BFC_MEMORY_ALLOC ((bfc_error_t) { .code = ERR_ALLOC, .msg = "Memory allocation failure!", .token = {0} })
 
 void bfc_print_help_info(void);
 
@@ -144,7 +144,7 @@ int main(int argc, char** argv) {
 	bfc_error_t err;
 
 	err = bfc_process_args(argc, argv, &cmd_args);
-	if (err.code != BFC_ERR_OK) {
+	if (err.code != ERR_OK) {
 		bfc_log_error(err, NULL);
 
 		goto end;
@@ -156,28 +156,28 @@ int main(int argc, char** argv) {
 	}
 
 	err = bfc_program_create(cmd_args.input, &program);
-	if (err.code != BFC_ERR_OK) {
+	if (err.code != ERR_OK) {
 		bfc_log_error(err, NULL);
 		
 		goto fail;
 	}
 	
 	err = bfc_lex(program, cmd_args, &tok_stream);
-	if (err.code != BFC_ERR_OK) {
+	if (err.code != ERR_OK) {
 		bfc_log_error(err, program);	
 			
 		goto fail;
 	}
 
 	err = bfc_parse_jump_table(tok_stream, &jump_table);
-	if (err.code != BFC_ERR_OK) {
+	if (err.code != ERR_OK) {
 		bfc_log_error(err, program);
 
 		goto fail;
 	}
 
 	err = bfc_ir_create(tok_stream, &root_block);
-	if (err.code != BFC_ERR_OK) {
+	if (err.code != ERR_OK) {
 		bfc_log_error(err, program);
 
 		goto fail;
@@ -229,22 +229,22 @@ bfc_error_t bfc_make_error_with_token(const bfc_err_code_t error_code, const cha
 
 const char *bfc_get_error_code(const bfc_err_code_t error_code) {
 	switch (error_code) {
-		case BFC_ERR_OK: {
+		case ERR_OK: {
 			return "ERROR_OK";
 		} break;
-		case BFC_ERR_ARGS: {
+		case ERR_ARGS: {
 			return "ERROR_ARGS";
 		} break;
-		case BFC_ERR_ALLOC: {
+		case ERR_ALLOC: {
 			return "ERROR_ALLOC";
 		} break;
-		case BFC_ERR_IO: {
+		case ERR_IO: {
 			return "ERROR_IO";
 		} break;
-		case BFC_ERR_MISMATCHED_BRACKET: {
+		case ERR_MISMATCHED_BRACKET: {
 			return "ERROR_MISMATCHED_BRACKET";
 		} break;
-		case BFC_ERR_MISSING_BRACKET: {
+		case ERR_MISSING_BRACKET: {
 			return "ERROR_MISSING_BRACKET";
 		} break;
 		default: {
@@ -254,7 +254,7 @@ const char *bfc_get_error_code(const bfc_err_code_t error_code) {
 }
 
 void bfc_log_error(const bfc_error_t err, const bfc_program_t *program) {
-	if (err.code == BFC_ERR_MISSING_BRACKET || err.code == BFC_ERR_MISMATCHED_BRACKET) {
+	if (err.code == ERR_MISSING_BRACKET || err.code == ERR_MISMATCHED_BRACKET) {
 		fprintf(
 			stderr, COL_INFO "%s[%lu, %lu]: " COL_ERROR "%s" COL_OFF COL_INFO ": %s\n" COL_OFF, 
 			bfc_program_getname(program), err.token.line, err.token.col, bfc_get_error_code(err.code), err.msg
@@ -283,7 +283,7 @@ bfc_error_t bfc_process_args(int argc, char **argv, bfc_args_t *cmd_args) {
 	uint8_t output_num = 0;
 	while (i < argc) {
 		if (strcmp(argv[i], "-o") == 0) {
-			if (i == argc - 1) return bfc_make_error(BFC_ERR_ARGS, "Argument to '-o' is missing (expected 1 value)");
+			if (i == argc - 1) return bfc_make_error(ERR_ARGS, "Argument to '-o' is missing (expected 1 value)");
 
 			cmd_args->outputs[output_num] = argv[i + 1];
 			++output_num;
@@ -292,25 +292,25 @@ bfc_error_t bfc_process_args(int argc, char **argv, bfc_args_t *cmd_args) {
 		} else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
 			cmd_args->ask_help = 0x1;
 			
-			return BFC_OK;
+			return BFC_ERR_OK;
 		} else if (strcmp(argv[i], "--fno-comments") == 0) {
 			cmd_args->f_no_comments = 1;
 		} else if (argv[i][0] == '-') {
 			char err_str[512];
 			snprintf(err_str, sizeof(err_str), "Unknown argument: '%s'", argv[i]);
 
-			return bfc_make_error(BFC_ERR_ARGS, err_str);
+			return bfc_make_error(ERR_ARGS, err_str);
 		} else {
-			if (strcmp(cmd_args->input, "") != 0) return bfc_make_error(BFC_ERR_ARGS, "Too many input file paths given!");
+			if (strcmp(cmd_args->input, "") != 0) return bfc_make_error(ERR_ARGS, "Too many input file paths given!");
 
 			cmd_args->input = argv[i];
 		}
 		++i;
 	}
 
-	if (strcmp(cmd_args->input, "") == 0) return bfc_make_error(BFC_ERR_ARGS, "No input files!");
+	if (strcmp(cmd_args->input, "") == 0) return bfc_make_error(ERR_ARGS, "No input files!");
 
-	return BFC_OK; 
+	return BFC_ERR_OK; 
 }
 
 bfc_error_t bfc_program_create(const char *file_path, bfc_program_t **program) {
@@ -329,7 +329,7 @@ bfc_error_t bfc_program_create(const char *file_path, bfc_program_t **program) {
 			free(prog);
 			fclose(file_handle);
 
-			return bfc_make_error(BFC_ERR_IO, "Unable to seek the end of file!");
+			return bfc_make_error(ERR_IO, "Unable to seek the end of file!");
 		}
 
 		long file_size = ftell(file_handle);
@@ -337,7 +337,7 @@ bfc_error_t bfc_program_create(const char *file_path, bfc_program_t **program) {
 			free(prog);
 			fclose(file_handle);
 
-			return bfc_make_error(BFC_ERR_IO, "Unable to perform ftell on file!");
+			return bfc_make_error(ERR_IO, "Unable to perform ftell on file!");
 		}
 
 		seek_status = fseek(file_handle, 0, SEEK_SET);
@@ -345,14 +345,14 @@ bfc_error_t bfc_program_create(const char *file_path, bfc_program_t **program) {
 			free(prog);
 			fclose(file_handle);
 
-			return bfc_make_error(BFC_ERR_IO, "Unable to seek the start of file!");
+			return bfc_make_error(ERR_IO, "Unable to seek the start of file!");
 		}
 		
 		if (file_size < 0 || file_size > (LONG_MAX - 1)) {
 			free(prog);
 			fclose(file_handle);
 
-			return bfc_make_error(BFC_ERR_IO, "Invalid file size!");
+			return bfc_make_error(ERR_IO, "Invalid file size!");
 		}
 
 		prog->buffer = (char*) malloc((file_size + 1) * sizeof(char));
@@ -386,7 +386,7 @@ bfc_error_t bfc_program_create(const char *file_path, bfc_program_t **program) {
 			char err_str[512];
 			snprintf(err_str, sizeof(err_str), "Unable to read from file '%s'!", file_path);
 
-			return bfc_make_error(BFC_ERR_IO, err_str);
+			return bfc_make_error(ERR_IO, err_str);
 		}
 
 		prog->buffer[end] = '\0';
@@ -401,13 +401,13 @@ bfc_error_t bfc_program_create(const char *file_path, bfc_program_t **program) {
 		}
 		
 		*program = prog;
-		return BFC_OK;
+		return BFC_ERR_OK;
 	}
 
 
 	char err_str[512];
 	snprintf(err_str, sizeof(err_str), "No such file or directory: '%s'", file_path);
-	return bfc_make_error(BFC_ERR_IO, err_str);;
+	return bfc_make_error(ERR_IO, err_str);;
 
 }
 
@@ -491,7 +491,7 @@ bfc_error_t bfc_lex(const bfc_program_t *program, const bfc_args_t cmd_args, bfc
 		tok_stream->length = 0;
 
     		*token_stream = tok_stream;
-		return BFC_OK;
+		return BFC_ERR_OK;
 	}
 
 	tok_stream->tokens = (bfc_token_t*) malloc(program->file_size * sizeof(bfc_token_t));
@@ -580,7 +580,7 @@ bfc_error_t bfc_lex(const bfc_program_t *program, const bfc_args_t cmd_args, bfc
 
 	*token_stream = tok_stream;
 
-	return BFC_OK;
+	return BFC_ERR_OK;
 }
 
 bfc_error_t bfc_parse_jump_table(const bfc_token_stream_t *tok_stream, ssize_t **jump_table) {
@@ -591,7 +591,7 @@ bfc_error_t bfc_parse_jump_table(const bfc_token_stream_t *tok_stream, ssize_t *
 	if (n == 0) {
 		*jump_table = calloc(1, sizeof(ssize_t));
 
-		return BFC_OK;
+		return BFC_ERR_OK;
 	}
 
 	const bfc_token_t *toks = tok_stream->tokens;
@@ -629,12 +629,12 @@ bfc_error_t bfc_parse_jump_table(const bfc_token_stream_t *tok_stream, ssize_t *
 	free(stack);
 
 	*jump_table = jtable;
-	return BFC_OK;
+	return BFC_ERR_OK;
 
 extra_closing_bracket:
 	snprintf(err_str, sizeof(err_str), "Found an extra ']' at line %lu.", toks[i].line);
 
-	err = bfc_make_error_with_token(BFC_ERR_MISMATCHED_BRACKET, err_str, toks[i]);
+	err = bfc_make_error_with_token(ERR_MISMATCHED_BRACKET, err_str, toks[i]);
 
 	free(stack);
 	free(jtable);
@@ -644,7 +644,7 @@ extra_closing_bracket:
 missing_closing_bracket:
 	snprintf(err_str, sizeof(err_str), "Missing a closing bracket ']' for opening bracket '[' at line %lu.", toks[stack[sp - 1]].line);
 	
-	err = bfc_make_error_with_token(BFC_ERR_MISSING_BRACKET, err_str, toks[stack[sp - 1]]);
+	err = bfc_make_error_with_token(ERR_MISSING_BRACKET, err_str, toks[stack[sp - 1]]);
 
 	free(stack);
 	free(jtable);
@@ -771,7 +771,7 @@ bfc_error_t bfc_ir_create(const bfc_token_stream_t *tok_stream, bfc_ir_block_t *
 		++i;
 	}
 
-	err = BFC_OK;
+	err = BFC_ERR_OK;
 
 end:
 	if (stack.blocks) {
