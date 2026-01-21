@@ -14,7 +14,7 @@ The entire compiler is implemented to be as minimal as possible with zero extern
 
 ## Planned Usage
 
-The CLI is intended to feel familiar if you have used clang:
+The CLI is intended to feel familiar if you have used clang or gcc:
 
 ```bash
 # Compile hello.bf to a native executable (default behavior)
@@ -22,12 +22,6 @@ The CLI is intended to feel familiar if you have used clang:
 
 # Emit assembly only
 ./bfc -S hello.bf -o hello.s
-
-# Emit object file only
-./bfc -c hello.bf -o hello.o
-
-# Keep intermediates when producing an executable
-./bfc hello.bf -o hello --save-temps
 ```
 
 ## TODO
@@ -62,7 +56,7 @@ The CLI is intended to feel familiar if you have used clang:
 
   - [ ] Recognize clear loops ([-] / [+]) and optimize to direct store
   
-- [ ] Diagnostics:
+- [x] Diagnostics:
 
   - [x] Mismatched bracket errors
 
