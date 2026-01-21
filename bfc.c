@@ -76,7 +76,7 @@ typedef struct {
     bfc_ir_token_type_t op;
 
     union {
-        int32_t imm;
+        ssize_t imm;
         struct bfc_ir_block *body;
     } val;
 } bfc_ir_instr_t;
@@ -117,6 +117,8 @@ void bfc_destroy_token_stream(bfc_token_stream_t **ptok_stream);
 bfc_error_t bfc_parse_jump_table(const bfc_token_stream_t *tok_stream, ssize_t **jump_table);
 void bfc_destroy_jump_table(ssize_t **pjump_table);
 
+bfc_ir_instr_t bfc_ir_make_imm_instr(bfc_ir_token_type_t ir_token_type, ssize_t imm);
+bfc_ir_instr_t bfc_ir_make_zero_instr(bfc_ir_token_type_t ir_token_type);
 bfc_error_t bfc_ir_create(const bfc_token_stream_t *tok_stream, const ssize_t *jump_table, bfc_ir_block_t **root_block);
 void bfc_ir_destroy(bfc_ir_block_t **root_block);
 
@@ -245,7 +247,10 @@ const char *bfc_get_error_code(const bfc_err_code_t error_code) {
 
 void bfc_log_error(const bfc_error_t err, const bfc_program_t *program) {
 	if (err.code == BFC_ERR_MISSING_BRACKET || err.code == BFC_ERR_MISMATCHED_BRACKET) {
-		fprintf(stderr, COL_INFO "%s[%lu, %lu]: " COL_ERROR "%s" COL_OFF COL_INFO ": %s\n" COL_OFF, bfc_program_getname(program), err.token.line, err.token.col, bfc_get_error_code(err.code), err.msg);
+		fprintf(
+			stderr, COL_INFO "%s[%lu, %lu]: " COL_ERROR "%s" COL_OFF COL_INFO ": %s\n" COL_OFF, 
+			bfc_program_getname(program), err.token.line, err.token.col, bfc_get_error_code(err.code), err.msg
+		);
 
 	
 		char *line_buf = bfc_program_getline(program, (size_t)err.token.line);
@@ -497,34 +502,42 @@ bfc_error_t bfc_lex(const bfc_program_t *program, bfc_token_stream_t **token_str
 			case '+': {
 				tok_stream->tokens[token_list_size++] = bfc_make_token(TT_INC, line, col);
 			} break;
+
 			case '-': {
 				tok_stream->tokens[token_list_size++] = bfc_make_token(TT_DEC, line, col);
 			} break;
+
 			case '>': {
 				tok_stream->tokens[token_list_size++] = bfc_make_token(TT_PTR_RIGHT, line, col);
 			} break;
+
 			case '<': {
 				tok_stream->tokens[token_list_size++] = bfc_make_token(TT_PTR_LEFT, line, col);
 			} break;
+
 			case '[': {
 				tok_stream->tokens[token_list_size++] = bfc_make_token(TT_LOOP_START, line, col);
 			} break;
 			case ']': {
 				tok_stream->tokens[token_list_size++] = bfc_make_token(TT_LOOP_END, line, col);
 			} break;
+
 			case '.': {
 				tok_stream->tokens[token_list_size++] = bfc_make_token(TT_OUTPUT, line, col); 
 			} break;
+
 			case ',': {
 				tok_stream->tokens[token_list_size++] = bfc_make_token(TT_INPUT, line, col); 
 
 			} break;
+
 			case '\n': {
 				++line;
 				col = 1;
 				++buffer_index;
 				continue;
 			} break;
+
 			default: break;
 		}
 
@@ -624,14 +637,76 @@ void bfc_destroy_jump_table(ssize_t **pjump_table) {
 	*pjump_table = NULL;
 }
 
+bfc_ir_instr_t bfc_ir_make_imm_instr(bfc_ir_token_type_t ir_token_type, ssize_t imm) {
+	return (bfc_ir_instr_t) {
+		.op = ir_token_type,
+		.val = {imm},
+	};
+}
+
+bfc_ir_instr_t bfc_ir_make_zero_instr(bfc_ir_token_type_t ir_token_type) {
+	return (bfc_ir_instr_t) { .op = ir_token_type };
+}
+
 bfc_error_t bfc_ir_create(const bfc_token_stream_t *tok_stream, const ssize_t *jump_table, bfc_ir_block_t **root_block) {
-	// TODO
-	
+	bfc_ir_block_t *current_block = (bfc_ir_block_t*) malloc(sizeof(bfc_ir_block_t));
+	current_block->capacity = 10;
+	current_block->instr = (bfc_ir_instr_t*) malloc(current_block->capacity * sizeof(bfc_ir_block_t));
+
+	size_t i = 0;
+	while (i < tok_stream->length) {
+		if (current_block->length > current_block->capacity) {
+			current_block->capacity *= 2;
+
+			current_block->instr = (bfc_ir_instr_t*) realloc(
+				current_block->instr, 
+				current_block->capacity * sizeof(bfc_ir_instr_t)
+			);
+		}
+
+		switch (tok_stream->tokens[i].type) {
+			case TT_INC: {
+				current_block->instr[current_block->length++] = bfc_ir_make_imm_instr(IR_ADD, 1);
+			} break;
+
+			case TT_DEC: {
+				current_block->instr[current_block->length++] = bfc_ir_make_imm_instr(IR_ADD, -1);
+			} break;
+
+			case TT_PTR_LEFT: {
+				current_block->instr[current_block->length++] = bfc_ir_make_imm_instr(IR_MOVE, -1);
+			} break;
+
+			case TT_PTR_RIGHT: {
+				current_block->instr[current_block->length++] = bfc_ir_make_imm_instr(IR_MOVE, 1);
+			} break;
+
+			case TT_INPUT: {
+				current_block->instr[current_block->length++] = bfc_ir_make_zero_instr(IR_GET);
+			} break;
+
+			case TT_OUTPUT: {
+				current_block->instr[current_block->length++] = bfc_ir_make_zero_instr(IR_PUT);
+			} break;
+
+			default: break;
+		}
+
+		++i;
+	}
+
+	*root_block = current_block;
 	return BFC_OK;
 }
+
 void bfc_ir_destroy(bfc_ir_block_t **root_block) {
 	if (!root_block || !*root_block) return;
 
+	for (size_t i = 0; i < (*root_block)->capacity; ++i) {
+		if ((*root_block)->instr->op == IR_LOOP) free((*root_block)->instr->val.body);
+	}
+
+	free((*root_block)->instr);
 	free(*root_block);
 
 	*root_block = NULL;
