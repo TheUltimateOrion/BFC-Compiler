@@ -40,6 +40,10 @@ The CLI is intended to feel familiar if you have used clang:
 
   - [x] --help
 
+- [x] Language features:
+
+  - [x] Line comments starting with ';' 
+
 - [ ] Code generation:
 
   - [ ] Assembly generation from Brainfuck instructions

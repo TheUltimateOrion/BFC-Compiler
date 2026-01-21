@@ -497,44 +497,53 @@ bfc_error_t bfc_lex(const bfc_program_t *program, bfc_token_stream_t **token_str
 	uint32_t line = 1;
 	uint32_t col = 1;
 
+	uint8_t in_comment = 0;
+
+#define EMIT_TOKEN(toktype) \
+    do { if (!in_comment) tok_stream->tokens[token_list_size++] = bfc_make_token((toktype), line, col); } while (0)
+
 	while (program->buffer[buffer_index] != '\0') {
 		switch (program->buffer[buffer_index]) {
+			case ';': {
+				in_comment = 1;
+			} break;
 			case '+': {
-				tok_stream->tokens[token_list_size++] = bfc_make_token(TT_INC, line, col);
+				EMIT_TOKEN(TT_INC);
 			} break;
 
 			case '-': {
-				tok_stream->tokens[token_list_size++] = bfc_make_token(TT_DEC, line, col);
-			} break;
-
-			case '>': {
-				tok_stream->tokens[token_list_size++] = bfc_make_token(TT_PTR_RIGHT, line, col);
+				EMIT_TOKEN(TT_DEC);
 			} break;
 
 			case '<': {
-				tok_stream->tokens[token_list_size++] = bfc_make_token(TT_PTR_LEFT, line, col);
+				EMIT_TOKEN(TT_PTR_LEFT);
+			} break;
+
+			case '>': {
+				EMIT_TOKEN(TT_PTR_RIGHT);
 			} break;
 
 			case '[': {
-				tok_stream->tokens[token_list_size++] = bfc_make_token(TT_LOOP_START, line, col);
-			} break;
-			case ']': {
-				tok_stream->tokens[token_list_size++] = bfc_make_token(TT_LOOP_END, line, col);
+				EMIT_TOKEN(TT_LOOP_START);
 			} break;
 
-			case '.': {
-				tok_stream->tokens[token_list_size++] = bfc_make_token(TT_OUTPUT, line, col); 
+			case ']': {
+				EMIT_TOKEN(TT_LOOP_END);
 			} break;
 
 			case ',': {
-				tok_stream->tokens[token_list_size++] = bfc_make_token(TT_INPUT, line, col); 
+				EMIT_TOKEN(TT_INPUT);
+			} break;
 
+			case '.': {
+				EMIT_TOKEN(TT_OUTPUT);
 			} break;
 
 			case '\n': {
 				++line;
 				col = 1;
 				++buffer_index;
+				in_comment = 0;
 				continue;
 			} break;
 
@@ -544,6 +553,8 @@ bfc_error_t bfc_lex(const bfc_program_t *program, bfc_token_stream_t **token_str
 		++buffer_index;
 		++col;
 	}
+
+#undef EMIT_TOKEN
 
 	if (token_list_size > 0) {
 		bfc_token_t *tmp = realloc(tok_stream->tokens, token_list_size * sizeof(bfc_token_t));
