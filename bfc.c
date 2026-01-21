@@ -71,14 +71,14 @@ typedef struct {
 	size_t line_count;
 } bfc_program_t;
 
-struct bfc_ir_block;
+struct bfc_ir_block_t;
 
 typedef struct {
     bfc_ir_token_type_t op;
 
     union {
         ssize_t imm;
-        struct bfc_ir_block *body;
+        struct bfc_ir_block_t *body;
     } val;
 } bfc_ir_instr_t;
 
@@ -90,12 +90,20 @@ typedef struct {
 } bfc_ir_block_t;
 
 typedef struct {
+	bfc_ir_block_t **blocks;
+	
+	size_t length;
+	size_t capacity;
+} bfc_ir_stack_t;
+
+typedef struct {
 	bfc_err_code_t code;
 	char msg[512];
 	bfc_token_t token;
 } bfc_error_t;
 
 #define BFC_OK ((bfc_error_t) { .code = BFC_ERR_OK, .msg = {0}, .token = {0} })
+#define BFC_MEMORY_ALLOC ((bfc_error_t) { .code = BFC_ERR_ALLOC, .msg = "Memory allocation failure!", .token = {0} })
 
 void bfc_print_help_info(void);
 
@@ -120,7 +128,7 @@ void bfc_destroy_jump_table(ssize_t **pjump_table);
 
 bfc_ir_instr_t bfc_ir_make_imm_instr(bfc_ir_token_type_t ir_token_type, ssize_t imm);
 bfc_ir_instr_t bfc_ir_make_zero_instr(bfc_ir_token_type_t ir_token_type);
-bfc_error_t bfc_ir_create(const bfc_token_stream_t *tok_stream, const ssize_t *jump_table, bfc_ir_block_t **root_block);
+bfc_error_t bfc_ir_create(const bfc_token_stream_t *tok_stream, bfc_ir_block_t **root_block);
 void bfc_ir_destroy(bfc_ir_block_t **root_block);
 
 int main(int argc, char** argv) {
@@ -168,7 +176,7 @@ int main(int argc, char** argv) {
 		goto fail;
 	}
 
-	err = bfc_ir_create(tok_stream, jump_table, &root_block);
+	err = bfc_ir_create(tok_stream, &root_block);
 	if (err.code != BFC_ERR_OK) {
 		bfc_log_error(err, program);
 
@@ -313,7 +321,7 @@ bfc_error_t bfc_program_create(const char *file_path, bfc_program_t **program) {
 		if (!prog) {
 			fclose(file_handle);
 
-			return bfc_make_error(BFC_ERR_ALLOC, "Memory allocation failure!");
+			return BFC_MEMORY_ALLOC;
 		}
 
 		int seek_status = fseek(file_handle, 0, SEEK_END);
@@ -352,7 +360,7 @@ bfc_error_t bfc_program_create(const char *file_path, bfc_program_t **program) {
 			free(prog);
 			fclose(file_handle);
 
-			return bfc_make_error(BFC_ERR_ALLOC, "Memory allocation failure!");
+			return BFC_MEMORY_ALLOC;
 		}
 
 		prog->file_size = file_size;
@@ -363,7 +371,7 @@ bfc_error_t bfc_program_create(const char *file_path, bfc_program_t **program) {
 			free(prog); 
 			fclose(file_handle); 
 
-			return bfc_make_error(BFC_ERR_ALLOC, "Memory allocation failure!"); 
+			return BFC_MEMORY_ALLOC; 
 		}
 
 		strcpy(prog->path, file_path);
@@ -476,7 +484,7 @@ void bfc_destroy_token_stream(bfc_token_stream_t **ptok_stream) {
 
 bfc_error_t bfc_lex(const bfc_program_t *program, const bfc_args_t cmd_args, bfc_token_stream_t **token_stream) {
 	bfc_token_stream_t *tok_stream = (bfc_token_stream_t*) malloc(sizeof(bfc_token_stream_t));
-	if (!tok_stream) return bfc_make_error(BFC_ERR_ALLOC, "Memory allocation failure!");
+	if (!tok_stream) return BFC_MEMORY_ALLOC;
 
 	if (program->file_size == 0) {
 		tok_stream->tokens = NULL;
@@ -490,7 +498,7 @@ bfc_error_t bfc_lex(const bfc_program_t *program, const bfc_args_t cmd_args, bfc
 	if (!tok_stream->tokens) {
 		free(tok_stream);
 
-		return bfc_make_error(BFC_ERR_ALLOC, "Memory allocation failure!");
+		return BFC_MEMORY_ALLOC;
 	}
 
 	size_t token_list_size = 0;
@@ -589,7 +597,7 @@ bfc_error_t bfc_parse_jump_table(const bfc_token_stream_t *tok_stream, ssize_t *
 	const bfc_token_t *toks = tok_stream->tokens;
 
 	ssize_t *jtable = malloc(n * sizeof(ssize_t));
-	if (!jtable) return bfc_make_error(BFC_ERR_ALLOC, "Memory allocation failure!");
+	if (!jtable) return BFC_MEMORY_ALLOC;
 
 	for (size_t i = 0; i < n; ++i) jtable[i] = -1;
 
@@ -597,7 +605,7 @@ bfc_error_t bfc_parse_jump_table(const bfc_token_stream_t *tok_stream, ssize_t *
 	if (!stack) { 
 		free(jtable);
 
-		return bfc_make_error(BFC_ERR_ALLOC, "Memory allocation failure!");
+		return BFC_MEMORY_ALLOC;
 	}
 
 	size_t sp = 0;
@@ -663,20 +671,48 @@ bfc_ir_instr_t bfc_ir_make_zero_instr(bfc_ir_token_type_t ir_token_type) {
 	return (bfc_ir_instr_t) { .op = ir_token_type };
 }
 
-bfc_error_t bfc_ir_create(const bfc_token_stream_t *tok_stream, const ssize_t *jump_table, bfc_ir_block_t **root_block) {
-	bfc_ir_block_t *current_block = (bfc_ir_block_t*) malloc(sizeof(bfc_ir_block_t));
+
+bfc_error_t bfc_ir_create(const bfc_token_stream_t *tok_stream, bfc_ir_block_t **root_block) {
+	bfc_error_t err = BFC_MEMORY_ALLOC;
+	*root_block = NULL;
+	
+	bfc_ir_stack_t stack;
+	stack.capacity = 5;
+	stack.length = 0;
+	stack.blocks = (bfc_ir_block_t**) malloc(stack.capacity * sizeof(bfc_ir_block_t*));
+	if (!stack.blocks) goto end;
+
+	stack.blocks[stack.length] = (bfc_ir_block_t*) malloc(sizeof(bfc_ir_block_t));
+	if (!stack.blocks[stack.length]) goto end;
+
+	bfc_ir_block_t *current_block = stack.blocks[stack.length++];
 	current_block->capacity = 10;
-	current_block->instr = (bfc_ir_instr_t*) malloc(current_block->capacity * sizeof(bfc_ir_block_t));
+	current_block->length = 0;
+
+	current_block->instr = (bfc_ir_instr_t*) malloc(current_block->capacity * sizeof(bfc_ir_instr_t));
+	if (!current_block->instr) goto end;
 
 	size_t i = 0;
 	while (i < tok_stream->length) {
-		if (current_block->length > current_block->capacity) {
+		if (stack.length >= stack.capacity) {
+			stack.capacity *= 2;
+			bfc_ir_block_t **tmp = (bfc_ir_block_t**) realloc(stack.blocks, stack.capacity * sizeof(bfc_ir_block_t*));
+			if (!tmp) goto end;
+
+			stack.blocks = tmp;
+		}
+
+		if (current_block->length >= current_block->capacity) {
 			current_block->capacity *= 2;
 
-			current_block->instr = (bfc_ir_instr_t*) realloc(
+			bfc_ir_instr_t *tmp = (bfc_ir_instr_t*) realloc(
 				current_block->instr, 
 				current_block->capacity * sizeof(bfc_ir_instr_t)
 			);
+			
+			if (!tmp) goto end;
+
+			current_block->instr = tmp;
 		}
 
 		switch (tok_stream->tokens[i].type) {
@@ -704,21 +740,54 @@ bfc_error_t bfc_ir_create(const bfc_token_stream_t *tok_stream, const ssize_t *j
 				current_block->instr[current_block->length++] = bfc_ir_make_zero_instr(IR_PUT);
 			} break;
 
-			default: break;
+			case TT_LOOP_START: {
+				bfc_ir_instr_t loop_instr = (bfc_ir_instr_t) {
+					.op = IR_LOOP,
+					.val = { .body = (struct bfc_ir_block_t*) malloc(sizeof(bfc_ir_block_t)) },
+				};
+				if (!loop_instr.val.body) goto end;
+
+				current_block->instr[current_block->length++] = loop_instr;
+
+				stack.blocks[stack.length] = (bfc_ir_block_t*) loop_instr.val.body;
+
+				current_block = stack.blocks[stack.length++];
+				current_block->capacity = 10;
+				current_block->length = 0;
+
+				current_block->instr = (bfc_ir_instr_t*) malloc(
+					current_block->capacity * sizeof(bfc_ir_instr_t)
+				);
+
+				if (!current_block->instr) goto end;
+			} break;
+
+			case TT_LOOP_END: {
+				--stack.length;
+				current_block = stack.blocks[stack.length - 1];
+			} break;
 		}
 
 		++i;
 	}
 
-	*root_block = current_block;
-	return BFC_OK;
+	err = BFC_OK;
+
+end:
+	if (stack.blocks) {
+		if (stack.blocks[0]) *root_block = stack.blocks[0];
+		free(stack.blocks);
+	}
+
+	return err;
 }
 
 void bfc_ir_destroy(bfc_ir_block_t **root_block) {
 	if (!root_block || !*root_block) return;
 
-	for (size_t i = 0; i < (*root_block)->capacity; ++i) {
-		if ((*root_block)->instr->op == IR_LOOP) free((*root_block)->instr->val.body);
+	for (size_t i = 0; i < (*root_block)->length; ++i) {
+		if ((*root_block)->instr[i].op == IR_LOOP && (*root_block)->instr[i].val.body)
+			bfc_ir_destroy((bfc_ir_block_t**) &(*root_block)->instr[i].val.body);
 	}
 
 	free((*root_block)->instr);
