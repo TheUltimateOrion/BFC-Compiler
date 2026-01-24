@@ -108,7 +108,7 @@ typedef struct {
 	.token = {0}                  \
 })
 
-#define BFC_MEMORY_ALLOC ((bfc_error_t) {      \
+#define BFC_ERR_ALLOC ((bfc_error_t) {      \
 	.code = ERR_ALLOC,                     \
 	.msg = "Memory allocation failure!",   \
 	.token = {0}                           \
@@ -352,7 +352,7 @@ bfc_error_t bfc_program_create(bfc_program_t **program, const char *file_path) {
 		if (!prog) {
 			fclose(file_handle);
 
-			return BFC_MEMORY_ALLOC;
+			return BFC_ERR_ALLOC;
 		}
 
 		int seek_status = fseek(file_handle, 0, SEEK_END);
@@ -391,7 +391,7 @@ bfc_error_t bfc_program_create(bfc_program_t **program, const char *file_path) {
 			free(prog);
 			fclose(file_handle);
 
-			return BFC_MEMORY_ALLOC;
+			return BFC_ERR_ALLOC;
 		}
 
 		prog->file_size = file_size;
@@ -402,7 +402,7 @@ bfc_error_t bfc_program_create(bfc_program_t **program, const char *file_path) {
 			free(prog); 
 			fclose(file_handle); 
 
-			return BFC_MEMORY_ALLOC; 
+			return BFC_ERR_ALLOC; 
 		}
 
 		strcpy(prog->path, file_path);
@@ -519,23 +519,24 @@ void bfc_token_stream_destroy(bfc_token_stream_t **ptok_stream) {
 
 bfc_error_t bfc_lex(bfc_token_stream_t **token_stream, const bfc_program_t *const program, const bfc_args_t cmd_args) {
 
-	bfc_token_stream_t *tok_stream = (bfc_token_stream_t*) malloc(sizeof(bfc_token_stream_t));
-	if (!tok_stream) return BFC_MEMORY_ALLOC;
+	bfc_error_t err = BFC_ERR_OK;
 
-	if (program->file_size == 0) {
-		tok_stream->tokens = NULL;
-		tok_stream->length = 0;
+	*token_stream = NULL;
+	
+	bfc_token_stream_t *tok_stream = NULL;
 
-    		*token_stream = tok_stream;
-		return BFC_ERR_OK;
-	}
+	if (program->file_size == 0) goto end;
+
+	err = BFC_ERR_ALLOC;
+
+	tok_stream = (bfc_token_stream_t*) malloc(sizeof(bfc_token_stream_t));
+	if (!tok_stream) goto end;
+
+	tok_stream->tokens = NULL;
+	tok_stream->length = 0;
 
 	tok_stream->tokens = (bfc_token_t*) malloc(program->file_size * sizeof(bfc_token_t));
-	if (!tok_stream->tokens) {
-		free(tok_stream);
-
-		return BFC_MEMORY_ALLOC;
-	}
+	if (!tok_stream->tokens) goto end;
 
 	size_t token_list_size = 0;
 	size_t buffer_index = 0;
@@ -619,7 +620,17 @@ bfc_error_t bfc_lex(bfc_token_stream_t **token_stream, const bfc_program_t *cons
 
 	*token_stream = tok_stream;
 
-	return BFC_ERR_OK;
+	tok_stream = NULL;
+
+	err = BFC_ERR_OK;
+
+end:
+	if (tok_stream) {
+		free(tok_stream->tokens);
+		free(tok_stream);
+	}
+
+	return err;
 }
 
 bfc_error_t bfc_parse_jump_table(ssize_t **jump_table, const bfc_token_stream_t *const tok_stream) {
@@ -637,7 +648,7 @@ bfc_error_t bfc_parse_jump_table(ssize_t **jump_table, const bfc_token_stream_t 
 	const bfc_token_t *toks = tok_stream->tokens;
 
 	ssize_t *jtable = malloc(n * sizeof(ssize_t));
-	if (!jtable) return BFC_MEMORY_ALLOC;
+	if (!jtable) return BFC_ERR_ALLOC;
 
 	for (size_t i = 0; i < n; ++i) jtable[i] = -1;
 
@@ -645,7 +656,7 @@ bfc_error_t bfc_parse_jump_table(ssize_t **jump_table, const bfc_token_stream_t 
 	if (!stack) { 
 		free(jtable);
 
-		return BFC_MEMORY_ALLOC;
+		return BFC_ERR_ALLOC;
 	}
 
 	size_t sp = 0;
@@ -722,7 +733,7 @@ bfc_ir_instr_t bfc_ir_make_zero_instr(const bfc_ir_token_type_t ir_token_type) {
 
 bfc_error_t bfc_ir_create(bfc_ir_block_t **root_block, const bfc_token_stream_t *const tok_stream) {
 
-	bfc_error_t err = BFC_MEMORY_ALLOC;
+	bfc_error_t err = BFC_ERR_ALLOC;
 	*root_block = NULL;
 	
 	bfc_ir_stack_t stack = (bfc_ir_stack_t) {
@@ -846,7 +857,7 @@ bfc_error_t bfc_ir_optimize_rep(bfc_ir_block_t **block) {
 	
 	if ((*block)->length == 0) return BFC_ERR_OK;
 
-	bfc_error_t err = BFC_MEMORY_ALLOC;
+	bfc_error_t err = BFC_ERR_ALLOC;
 
 	bfc_ir_block_t *optimized_block = (bfc_ir_block_t*) malloc(sizeof(bfc_ir_block_t));
 	if (!optimized_block) goto end;
