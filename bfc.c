@@ -138,9 +138,11 @@ void bfc_jump_table_destroy(ssize_t **pjump_table);
 bfc_ir_instr_t bfc_ir_make_imm_instr(const bfc_ir_token_type_t ir_token_type, const ssize_t imm);
 bfc_ir_instr_t bfc_ir_make_zero_instr(const bfc_ir_token_type_t ir_token_type);
 bfc_error_t bfc_ir_create(bfc_ir_block_t **root_block, const bfc_token_stream_t *const tok_stream);
+bfc_error_t bfc_ir_optimize_rep(bfc_ir_block_t **block);
 void bfc_ir_destroy(bfc_ir_block_t **proot_block);
 
 int main(int argc, char** argv) {
+
 	int ret = EXIT_FAILURE;
 
 	bfc_args_t cmd_args = {0};
@@ -192,6 +194,13 @@ int main(int argc, char** argv) {
 		goto fail;
 	}
 
+	err = bfc_ir_optimize_rep(&root_block);
+	if (err.code != ERR_OK) {
+		bfc_log_error(err, program);
+
+		goto fail;
+	}
+
 	ret = EXIT_SUCCESS;
 
 fail:
@@ -205,6 +214,7 @@ end:
 }
 
 void bfc_cmd_help(void) {
+
 	printf("OVERVIEW: bfc Brainfuck compiler\n\n");
 	printf("USAGE: bfc [options] <file.bf>\n\n");
 	printf("OPTIONS:\n");
@@ -215,6 +225,7 @@ void bfc_cmd_help(void) {
 }
 
 bfc_error_t bfc_make_error(const bfc_err_code_t error_code, const char *msg) {
+
     bfc_error_t err = {0};
 
     err.code = error_code;
@@ -225,6 +236,7 @@ bfc_error_t bfc_make_error(const bfc_err_code_t error_code, const char *msg) {
 }
 
 bfc_error_t bfc_make_error_with_token(const bfc_err_code_t error_code, const char *msg, const bfc_token_t token) {
+
     bfc_error_t err = {0};
 
     err.code = error_code;
@@ -262,6 +274,7 @@ const char *bfc_get_error_code(const bfc_err_code_t error_code) {
 }
 
 void bfc_log_error(const bfc_error_t err, const bfc_program_t *const program) {
+
 	if (err.code == ERR_MISSING_BRACKET || err.code == ERR_MISMATCHED_BRACKET) {
 		fprintf(
 			stderr, COL_INFO "%s[%lu, %lu]: " COL_ERROR "%s" COL_OFF COL_INFO ": %s\n" COL_OFF, 
@@ -288,12 +301,14 @@ void bfc_log_error(const bfc_error_t err, const bfc_program_t *const program) {
 }
 
 bfc_error_t bfc_process_args(bfc_args_t *const cmd_args, int argc, char **argv) {
+
 	cmd_args->flags = 0;
 	cmd_args->input = "";
 	
 	int i = 1;
 	uint8_t output_num = 0;
 	while (i < argc) {
+
 		if (strcmp(argv[i], "-o") == 0) {
 			if (i == argc - 1) 
 				return bfc_make_error(ERR_ARGS, "Argument to '-o' is missing (expected 1 value)");
@@ -329,6 +344,7 @@ bfc_error_t bfc_process_args(bfc_args_t *const cmd_args, int argc, char **argv) 
 }
 
 bfc_error_t bfc_program_create(bfc_program_t **program, const char *file_path) {
+
 	FILE *file_handle;
 
 	if((file_handle = fopen(file_path, "rb"))) {
@@ -426,6 +442,7 @@ bfc_error_t bfc_program_create(bfc_program_t **program, const char *file_path) {
 }
 
 void bfc_program_destroy(bfc_program_t **pprogram) {
+
 	if (!pprogram || !*pprogram) return;
 
 	free((*pprogram)->path);
@@ -436,6 +453,7 @@ void bfc_program_destroy(bfc_program_t **pprogram) {
 }
 
 const char *bfc_program_getname(const bfc_program_t *const program) {
+
 	const char *start = program->path;
 	const char *end = program->path;
 	while (end != NULL) {
@@ -446,6 +464,7 @@ const char *bfc_program_getname(const bfc_program_t *const program) {
 }
 
 char *bfc_program_getline(const bfc_program_t *const program, const size_t n) {
+
 	if (n > program->line_count) return NULL;
 
 	size_t current_line = 1;
@@ -480,6 +499,7 @@ char *bfc_program_getline(const bfc_program_t *const program, const size_t n) {
 }
 
 bfc_token_t bfc_make_token(const bfc_token_type_t tok_type, const uint32_t line, const uint32_t col) {
+
 	return (bfc_token_t) {
 		.type = tok_type, 
 		.line = line, 
@@ -488,6 +508,7 @@ bfc_token_t bfc_make_token(const bfc_token_type_t tok_type, const uint32_t line,
 }
 
 void bfc_token_stream_destroy(bfc_token_stream_t **ptok_stream) {
+
 	if (!ptok_stream || !*ptok_stream) return;
 
 	free((*ptok_stream)->tokens);
@@ -497,6 +518,7 @@ void bfc_token_stream_destroy(bfc_token_stream_t **ptok_stream) {
 }
 
 bfc_error_t bfc_lex(bfc_token_stream_t **token_stream, const bfc_program_t *const program, const bfc_args_t cmd_args) {
+
 	bfc_token_stream_t *tok_stream = (bfc_token_stream_t*) malloc(sizeof(bfc_token_stream_t));
 	if (!tok_stream) return BFC_MEMORY_ALLOC;
 
@@ -601,6 +623,7 @@ bfc_error_t bfc_lex(bfc_token_stream_t **token_stream, const bfc_program_t *cons
 }
 
 bfc_error_t bfc_parse_jump_table(ssize_t **jump_table, const bfc_token_stream_t *const tok_stream) {
+
 	bfc_error_t err;
 	char err_str[512];
 
@@ -674,6 +697,7 @@ missing_closing_bracket:
 }
 
 void bfc_jump_table_destroy(ssize_t **pjump_table) {
+
 	if (!pjump_table || !*pjump_table) return;
 
 	free(*pjump_table);
@@ -682,6 +706,7 @@ void bfc_jump_table_destroy(ssize_t **pjump_table) {
 }
 
 bfc_ir_instr_t bfc_ir_make_imm_instr(const bfc_ir_token_type_t ir_token_type, const ssize_t imm) {
+
 	return (bfc_ir_instr_t) {
 		.op = ir_token_type,
 		.val = {imm},
@@ -689,12 +714,14 @@ bfc_ir_instr_t bfc_ir_make_imm_instr(const bfc_ir_token_type_t ir_token_type, co
 }
 
 bfc_ir_instr_t bfc_ir_make_zero_instr(const bfc_ir_token_type_t ir_token_type) {
+
 	return (bfc_ir_instr_t) { 
 		.op = ir_token_type,
 	};
 }
 
 bfc_error_t bfc_ir_create(bfc_ir_block_t **root_block, const bfc_token_stream_t *const tok_stream) {
+
 	bfc_error_t err = BFC_MEMORY_ALLOC;
 	*root_block = NULL;
 	
@@ -710,6 +737,7 @@ bfc_error_t bfc_ir_create(bfc_ir_block_t **root_block, const bfc_token_stream_t 
 	if (!stack.blocks[stack.length]) goto end;
 
 	bfc_ir_block_t *current_block = stack.blocks[stack.length++];
+	current_block->instr = NULL;
 	current_block->capacity = 10;
 	current_block->length = 0;
 
@@ -814,7 +842,66 @@ end:
 	return err;
 }
 
+bfc_error_t bfc_ir_optimize_rep(bfc_ir_block_t **block) {
+	
+	if ((*block)->length == 0) return BFC_ERR_OK;
+
+	bfc_error_t err = BFC_MEMORY_ALLOC;
+
+	bfc_ir_block_t *optimized_block = (bfc_ir_block_t*) malloc(sizeof(bfc_ir_block_t));
+	if (!optimized_block) goto end;
+	optimized_block->instr = NULL;
+	optimized_block->capacity = (*block)->capacity;
+	optimized_block->length = 0;
+
+	optimized_block->instr = (bfc_ir_instr_t*) malloc(optimized_block->capacity * sizeof(bfc_ir_instr_t));
+	if (!optimized_block->instr) goto end;
+
+	bfc_ir_instr_t prev_instr = (*block)->instr[0];
+	ssize_t instr_delta = 0;
+	size_t i = 0;
+	while (i < (*block)->length) {
+		if ((*block)->instr[i].op == IR_ADD || (*block)->instr[i].op == IR_MOVE) {
+			do {
+				instr_delta += (*block)->instr[i].val.imm;
+				prev_instr = (*block)->instr[i++];
+			} while(i < (*block)->length && (*block)->instr[i].op == prev_instr.op);
+
+			if (instr_delta != 0)
+				optimized_block->instr[optimized_block->length++] = bfc_ir_make_imm_instr(prev_instr.op, instr_delta);
+			
+			instr_delta = 0;
+		} else {
+			if ((*block)->instr[i].op == IR_LOOP) {
+				err = bfc_ir_optimize_rep((bfc_ir_block_t**) &(*block)->instr[i].val.body);
+
+				if (err.code != ERR_OK) goto end;
+			}
+			
+			optimized_block->instr[optimized_block->length++] = (*block)->instr[i];
+			prev_instr = (*block)->instr[i++];
+		}
+	}
+	
+	free((*block)->instr);
+	free(*block);
+
+	*block = optimized_block;
+	optimized_block = NULL; 
+
+	err = BFC_ERR_OK;
+
+end:
+	if (optimized_block) {
+		free(optimized_block->instr);
+		free(optimized_block);
+	}
+
+	return err;
+}
+
 void bfc_ir_destroy(bfc_ir_block_t **proot_block) {
+
 	if (!proot_block || !*proot_block) return;
 
 	for (size_t i = 0; i < (*proot_block)->length; ++i) {

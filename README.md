@@ -48,9 +48,9 @@ The CLI is intended to feel familiar if you have used clang or gcc:
 
 - [ ] Optimizations (Brainfuck-specific):
 
-  - [ ] Coalesce repeated ops (+++++, -----)
+  - [x] Coalesce repeated ops (+++++, -----)
 
-  - [ ] Coalesce pointer moves (>>>>, <<<<)
+  - [x] Coalesce pointer moves (>>>>, <<<<)
 
   - [ ] Peephole optimizations for common patterns
 
