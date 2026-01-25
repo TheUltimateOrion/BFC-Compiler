@@ -37,8 +37,22 @@ typedef enum {
 	ERR_IO,
 	ERR_MISMATCHED_BRACKET,
 	ERR_MISSING_BRACKET,
-	ERR_ALLOC
+	ERR_ALLOC,
+	ERR_INTERNAL,
 } bfc_err_code_t;
+
+typedef enum {
+	ARCH_X86_64,
+	ARCH_i386,
+	ARCH_aarch64,
+	ARCH_arm32,
+} bfc_arch_t;
+
+typedef enum {
+	OS_WIN,
+	OS_MAC,
+	OS_LINUX,
+} bfc_os_t;
 
 typedef struct {
 	union {
@@ -114,6 +128,15 @@ typedef struct {
 	.token = {0}                           \
 })
 
+typedef struct {
+	bfc_arch_t arch;
+	bfc_os_t os;
+
+	char *buffer;
+	size_t length;
+	size_t capacity;
+} bfc_asm_t;
+
 void bfc_cmd_help(void);
 
 bfc_error_t bfc_make_error(const bfc_err_code_t error_code, const char *msg);
@@ -138,8 +161,16 @@ void bfc_jump_table_destroy(ssize_t **pjump_table);
 bfc_ir_instr_t bfc_ir_make_imm_instr(const bfc_ir_token_type_t ir_token_type, const ssize_t imm);
 bfc_ir_instr_t bfc_ir_make_zero_instr(const bfc_ir_token_type_t ir_token_type);
 bfc_error_t bfc_ir_create(bfc_ir_block_t **root_block, const bfc_token_stream_t *const tok_stream);
-bfc_error_t bfc_ir_optimize_rep(bfc_ir_block_t **block);
+bfc_error_t bfc_ir_optimize_rep(bfc_ir_block_t **ir_block);
 void bfc_ir_destroy(bfc_ir_block_t **proot_block);
+
+bfc_error_t bfc_codegen(bfc_asm_t **asm_prog, const bfc_ir_block_t *const ir_block);
+bfc_error_t bfc_codegen_x86_64(bfc_asm_t **asm_prog, const bfc_ir_block_t *const ir_block);
+bfc_error_t bfc_codegen_i386(bfc_asm_t **asm_prog, const bfc_ir_block_t *const ir_block);
+bfc_error_t bfc_codegen_aarch64(bfc_asm_t **asm_prog, const bfc_ir_block_t *const ir_block);
+bfc_error_t bfc_codegen_arm32(bfc_asm_t **asm_prog, const bfc_ir_block_t *const ir_block);
+
+void bfc_asm_destroy(bfc_asm_t **pasm_prog);
 
 int main(int argc, char** argv) {
 
@@ -147,10 +178,11 @@ int main(int argc, char** argv) {
 
 	bfc_args_t cmd_args = {0};
 
-	bfc_program_t *program = NULL;
+	bfc_program_t *program         = NULL;
 	bfc_token_stream_t *tok_stream = NULL;
-	ssize_t *jump_table = NULL;
-	bfc_ir_block_t *root_block = NULL;
+	ssize_t *jump_table            = NULL;
+	bfc_ir_block_t *root_block     = NULL;
+	bfc_asm_t *asm_prog            = NULL;
 
 	bfc_error_t err;
 
@@ -201,13 +233,21 @@ int main(int argc, char** argv) {
 		goto fail;
 	}
 
+	err = bfc_codegen(&asm_prog, root_block);
+	if (err.code != ERR_OK) {
+		bfc_log_error(err, program);
+
+		goto fail;
+	}
+
 	ret = EXIT_SUCCESS;
 
 fail:
-	if (program) bfc_program_destroy(&program);
+	if (program)    bfc_program_destroy(&program);
 	if (tok_stream) bfc_token_stream_destroy(&tok_stream);
 	if (jump_table) bfc_jump_table_destroy(&jump_table);
 	if (root_block) bfc_ir_destroy(&root_block);
+	if (asm_prog)   bfc_asm_destroy(&asm_prog);
 
 end:
 	return ret;
@@ -853,51 +893,51 @@ end:
 	return err;
 }
 
-bfc_error_t bfc_ir_optimize_rep(bfc_ir_block_t **block) {
+bfc_error_t bfc_ir_optimize_rep(bfc_ir_block_t **ir_block) {
 	
-	if ((*block)->length == 0) return BFC_ERR_OK;
+	if ((*ir_block)->length == 0) return BFC_ERR_OK;
 
 	bfc_error_t err = BFC_ERR_ALLOC;
 
 	bfc_ir_block_t *optimized_block = (bfc_ir_block_t*) malloc(sizeof(bfc_ir_block_t));
 	if (!optimized_block) goto end;
 	optimized_block->instr = NULL;
-	optimized_block->capacity = (*block)->capacity;
+	optimized_block->capacity = (*ir_block)->capacity;
 	optimized_block->length = 0;
 
 	optimized_block->instr = (bfc_ir_instr_t*) malloc(optimized_block->capacity * sizeof(bfc_ir_instr_t));
 	if (!optimized_block->instr) goto end;
 
-	bfc_ir_instr_t prev_instr = (*block)->instr[0];
+	bfc_ir_instr_t prev_instr = (*ir_block)->instr[0];
 	ssize_t instr_delta = 0;
 	size_t i = 0;
-	while (i < (*block)->length) {
-		if ((*block)->instr[i].op == IR_ADD || (*block)->instr[i].op == IR_MOVE) {
+	while (i < (*ir_block)->length) {
+		if ((*ir_block)->instr[i].op == IR_ADD || (*ir_block)->instr[i].op == IR_MOVE) {
 			do {
-				instr_delta += (*block)->instr[i].val.imm;
-				prev_instr = (*block)->instr[i++];
-			} while(i < (*block)->length && (*block)->instr[i].op == prev_instr.op);
+				instr_delta += (*ir_block)->instr[i].val.imm;
+				prev_instr = (*ir_block)->instr[i++];
+			} while(i < (*ir_block)->length && (*ir_block)->instr[i].op == prev_instr.op);
 
 			if (instr_delta != 0)
 				optimized_block->instr[optimized_block->length++] = bfc_ir_make_imm_instr(prev_instr.op, instr_delta);
 			
 			instr_delta = 0;
 		} else {
-			if ((*block)->instr[i].op == IR_LOOP) {
-				err = bfc_ir_optimize_rep((bfc_ir_block_t**) &(*block)->instr[i].val.body);
+			if ((*ir_block)->instr[i].op == IR_LOOP) {
+				err = bfc_ir_optimize_rep((bfc_ir_block_t**) &(*ir_block)->instr[i].val.body);
 
 				if (err.code != ERR_OK) goto end;
 			}
 			
-			optimized_block->instr[optimized_block->length++] = (*block)->instr[i];
-			prev_instr = (*block)->instr[i++];
+			optimized_block->instr[optimized_block->length++] = (*ir_block)->instr[i];
+			prev_instr = (*ir_block)->instr[i++];
 		}
 	}
 	
-	free((*block)->instr);
-	free(*block);
+	free((*ir_block)->instr);
+	free(*ir_block);
 
-	*block = optimized_block;
+	*ir_block = optimized_block;
 	optimized_block = NULL; 
 
 	err = BFC_ERR_OK;
@@ -925,3 +965,66 @@ void bfc_ir_destroy(bfc_ir_block_t **proot_block) {
 
 	*proot_block = NULL;
 }
+
+bfc_error_t bfc_codegen(bfc_asm_t **asm_prog, const bfc_ir_block_t *const ir_block) {
+	*asm_prog = (bfc_asm_t*) malloc(sizeof(bfc_asm_t));
+	if (!(*asm_prog)) return BFC_ERR_ALLOC;
+
+	(*asm_prog)->buffer = NULL;
+	(*asm_prog)->length = 0;
+	(*asm_prog)->capacity = 4096;
+
+	(*asm_prog)->buffer = (char*) malloc((*asm_prog)->capacity * sizeof(char));
+	if (!(*asm_prog)->buffer) return BFC_ERR_ALLOC;
+
+	(*asm_prog)->buffer[0] = '\0';
+
+#if defined(__x86_64__) || defined(_M_X64)
+	return bfc_codegen_x86_64(asm_prog, ir_block);
+#elif defined(__i386__) || defined(_M_IX86)
+	return bfc_codegen_i386(asm_prog, ir_block);
+#elif defined(__aarch64__) || defined(_M_ARM64)
+	return bfc_codegen_aarch64(asm_prog, ir_block);
+#elif defined(__arm__) || defined(_M_ARM)
+	return bfc_codegen_arm32(asm_prog, ir_block);
+#else
+	return bfc_make_error(ERR_INTERNAL, "Unknown architectur!");
+#endif
+
+}
+
+bfc_error_t bfc_codegen_x86_64(bfc_asm_t **asm_prog, const bfc_ir_block_t *const ir_block)  {
+	(*asm_prog)->arch = ARCH_X86_64;
+
+	return bfc_make_error(ERR_INTERNAL, "x86_64 generation not supported yet!");
+}
+
+bfc_error_t bfc_codegen_i386(bfc_asm_t **asm_prog, const bfc_ir_block_t *const ir_block) {
+	(*asm_prog)->arch = ARCH_i386;
+	return bfc_make_error(ERR_INTERNAL, "i386 generation not supported yet!");
+}
+
+bfc_error_t bfc_codegen_aarch64(bfc_asm_t **asm_prog, const bfc_ir_block_t *const ir_block) {
+	(*asm_prog)->arch = ARCH_aarch64;
+
+	// TOOD
+
+	return BFC_ERR_OK;
+}
+
+bfc_error_t bfc_codegen_arm32(bfc_asm_t **asm_prog, const bfc_ir_block_t *const ir_block) {
+	(*asm_prog)->arch = ARCH_arm32;
+
+	return bfc_make_error(ERR_INTERNAL, "arm32 generation not supported yet!");
+}
+
+void bfc_asm_destroy(bfc_asm_t **pasm_prog) {
+
+	if (!pasm_prog || !*pasm_prog) return;
+
+	free((*pasm_prog)->buffer);
+	free(*pasm_prog);
+
+	*pasm_prog = NULL;
+}
+
