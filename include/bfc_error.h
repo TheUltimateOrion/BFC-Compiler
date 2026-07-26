@@ -9,14 +9,19 @@
 
 struct bfc_program_t;
 
+#define ERROR_LIST                \
+	X(ERR_OK)                     \
+	X(ERR_ARGS)                   \
+	X(ERR_IO)                     \
+	X(ERR_MISMATCHED_BRACKET)     \
+	X(ERR_MISSING_BRACKET)        \
+	X(ERR_ALLOC)                  \
+	X(ERR_INTERNAL)
+
 typedef enum {
-	ERR_OK = 0,
-	ERR_ARGS,
-	ERR_IO,
-	ERR_MISMATCHED_BRACKET,
-	ERR_MISSING_BRACKET,
-	ERR_ALLOC,
-	ERR_INTERNAL,
+	#define X(name) name,
+		ERROR_LIST
+	#undef X
 } bfc_err_code_t;
 
 typedef struct {
@@ -25,13 +30,13 @@ typedef struct {
 	bfc_token_t token;
 } bfc_error_t;
 
-#define BFC_ERR_OK ((bfc_error_t) {   \
-	.code = ERR_OK,               \
-	.msg = {0},                   \
-	.token = {0}                  \
+#define BFC_ERR_OK ((bfc_error_t) {     \
+	.code = ERR_OK,                     \
+	.msg = {0},                         \
+	.token = {0}                        \
 })
 
-#define BFC_ERR_ALLOC ((bfc_error_t) {      \
+#define BFC_ERR_ALLOC ((bfc_error_t) {     \
 	.code = ERR_ALLOC,                     \
 	.msg = "Memory allocation failure!",   \
 	.token = {0}                           \

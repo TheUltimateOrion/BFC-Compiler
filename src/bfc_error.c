@@ -31,24 +31,10 @@ bfc_error_t bfc_make_error_with_token(const bfc_err_code_t error_code, const cha
 
 const char *bfc_get_error_code(const bfc_err_code_t error_code) {
 	switch (error_code) {
-		case ERR_OK: {
-			return "ERROR_OK";
-		} break;
-		case ERR_ARGS: {
-			return "ERROR_ARGS";
-		} break;
-		case ERR_ALLOC: {
-			return "ERROR_ALLOC";
-		} break;
-		case ERR_IO: {
-			return "ERROR_IO";
-		} break;
-		case ERR_MISMATCHED_BRACKET: {
-			return "ERROR_MISMATCHED_BRACKET";
-		} break;
-		case ERR_MISSING_BRACKET: {
-			return "ERROR_MISSING_BRACKET";
-		} break;
+		#define X(name) case name: { return #name; } break;
+			ERROR_LIST
+		#undef X
+
 		default: {
 			return "Unknown error";
 		} break;
