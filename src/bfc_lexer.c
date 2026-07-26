@@ -1,6 +1,7 @@
 #include "bfc_lexer.h"
 
 #include <stdlib.h>
+#include <stdbool.h>
 
 bfc_token_t bfc_make_token(const bfc_token_type_t tok_type, const uint32_t line, const uint32_t col) {
 
@@ -48,7 +49,7 @@ bfc_error_t bfc_lex(bfc_token_stream_t **token_stream, const bfc_program_t *cons
 	uint32_t line = 1;
 	uint32_t col = 1;
 
-	uint8_t in_comment = 0;
+	bool in_comment = false;
 
 #define EMIT_TOKEN(toktype) \
 	if (!in_comment) tok_stream->tokens[token_list_size++] = bfc_make_token((toktype), line, col);
@@ -58,7 +59,7 @@ bfc_error_t bfc_lex(bfc_token_stream_t **token_stream, const bfc_program_t *cons
 			case ';': {
 				if (cmd_args.f_no_comments) break;
 
-				in_comment = 1;
+				in_comment = true;
 			} break;
 
 #define X(tok_type, tok_char) case tok_char: { EMIT_TOKEN(tok_type); } break;
@@ -76,7 +77,7 @@ bfc_error_t bfc_lex(bfc_token_stream_t **token_stream, const bfc_program_t *cons
 				++line;
 				col = 1;
 				++buffer_index;
-				in_comment = 0;
+				in_comment = false;
 				continue;
 			} break;
 

@@ -8,8 +8,8 @@
 typedef struct {
 	union {
 		struct {
-			uint8_t do_assemble        : 1;
-			uint8_t ask_help           : 1;
+			uint8_t do_assemble   : 1;
+			uint8_t ask_help      : 1;
 			uint8_t f_no_comments : 1;
 		};
 		uint8_t flags;
