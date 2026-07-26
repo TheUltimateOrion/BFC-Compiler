@@ -31,9 +31,9 @@ bfc_error_t bfc_make_error_with_token(const bfc_err_code_t error_code, const cha
 
 const char *bfc_get_error_code(const bfc_err_code_t error_code) {
 	switch (error_code) {
-		#define X(name) case name: { return #name; } break;
-			ERROR_LIST
-		#undef X
+#define X(name) case name: { return #name; } break;
+		ERROR_LIST
+#undef X
 
 		default: {
 			return "Unknown error";

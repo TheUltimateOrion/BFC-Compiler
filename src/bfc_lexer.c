@@ -63,38 +63,18 @@ bfc_error_t bfc_lex(bfc_token_stream_t **token_stream, const bfc_program_t *cons
 
 				in_comment = 1;
 			} break;
-			case '+': {
-				EMIT_TOKEN(TT_INC);
-			} break;
 
-			case '-': {
-				EMIT_TOKEN(TT_DEC);
-			} break;
+#define X(tok_type, tok_char) case tok_char: { EMIT_TOKEN(tok_type); } break;
+			TOKEN_LIST
+#undef X
 
-			case '<': {
-				EMIT_TOKEN(TT_PTR_LEFT);
-			} break;
 
-			case '>': {
-				EMIT_TOKEN(TT_PTR_RIGHT);
+#if defined(_WIN32) || defined(_WIN64)
+			case '\r': {
+				++buffer_index;
+				continue;
 			} break;
-
-			case '[': {
-				EMIT_TOKEN(TT_LOOP_START);
-			} break;
-
-			case ']': {
-				EMIT_TOKEN(TT_LOOP_END);
-			} break;
-
-			case ',': {
-				EMIT_TOKEN(TT_INPUT);
-			} break;
-
-			case '.': {
-				EMIT_TOKEN(TT_OUTPUT);
-			} break;
-
+#endif
 			case '\n': {
 				++line;
 				col = 1;

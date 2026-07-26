@@ -9,19 +9,19 @@
 
 struct bfc_program_t;
 
-#define ERROR_LIST                \
-	X(ERR_OK)                     \
-	X(ERR_ARGS)                   \
-	X(ERR_IO)                     \
-	X(ERR_MISMATCHED_BRACKET)     \
-	X(ERR_MISSING_BRACKET)        \
-	X(ERR_ALLOC)                  \
+#define ERROR_LIST            \
+	X(ERR_OK)                 \
+	X(ERR_ARGS)               \
+	X(ERR_IO)                 \
+	X(ERR_MISMATCHED_BRACKET) \
+	X(ERR_MISSING_BRACKET)    \
+	X(ERR_ALLOC)              \
 	X(ERR_INTERNAL)
 
 typedef enum {
-	#define X(name) name,
-		ERROR_LIST
-	#undef X
+#define X(name) name,
+	ERROR_LIST
+#undef X
 } bfc_err_code_t;
 
 typedef struct {

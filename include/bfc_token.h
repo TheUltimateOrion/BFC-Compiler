@@ -4,15 +4,20 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define TOKEN_LIST        \
+	X(TT_INC,        '+') \
+	X(TT_DEC,        '-') \
+	X(TT_PTR_RIGHT,  '>') \
+	X(TT_PTR_LEFT,   '<') \
+	X(TT_LOOP_START, '[') \
+	X(TT_LOOP_END,   ']') \
+	X(TT_OUTPUT,     '.') \
+	X(TT_INPUT,      ',')
+
 typedef enum {
-	TT_INC,
-	TT_DEC,
-	TT_PTR_RIGHT,
-	TT_PTR_LEFT,
-	TT_LOOP_START,
-	TT_LOOP_END,
-	TT_OUTPUT,
-	TT_INPUT
+#define X(tok_type, ...) tok_type,
+	TOKEN_LIST
+#undef X
 } bfc_token_type_t;
 
 typedef struct {
