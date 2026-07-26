@@ -51,10 +51,7 @@ bfc_error_t bfc_lex(bfc_token_stream_t **token_stream, const bfc_program_t *cons
 	uint8_t in_comment = 0;
 
 #define EMIT_TOKEN(toktype) \
-    do { \
-	if (!in_comment) \
-		tok_stream->tokens[token_list_size++] = bfc_make_token((toktype), line, col); \
-    } while (0)
+	if (!in_comment) tok_stream->tokens[token_list_size++] = bfc_make_token((toktype), line, col);
 
 	while (program->buffer[buffer_index] != '\0') {
 		switch (program->buffer[buffer_index]) {
@@ -65,7 +62,7 @@ bfc_error_t bfc_lex(bfc_token_stream_t **token_stream, const bfc_program_t *cons
 			} break;
 
 #define X(tok_type, tok_char) case tok_char: { EMIT_TOKEN(tok_type); } break;
-			TOKEN_LIST
+			TOKEN_MAP
 #undef X
 
 

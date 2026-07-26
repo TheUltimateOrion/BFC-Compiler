@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define TOKEN_LIST        \
+#define TOKEN_MAP         \
 	X(TT_INC,        '+') \
 	X(TT_DEC,        '-') \
 	X(TT_PTR_RIGHT,  '>') \
@@ -16,14 +16,14 @@
 
 typedef enum {
 #define X(tok_type, ...) tok_type,
-	TOKEN_LIST
+	TOKEN_MAP
 #undef X
 } bfc_token_type_t;
 
 typedef struct {
 	bfc_token_type_t type;
-size_t line;
-	size_t col;
+	uint32_t line;
+	uint32_t col;
 } bfc_token_t;
 
 typedef struct {

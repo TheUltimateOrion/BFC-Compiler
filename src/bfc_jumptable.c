@@ -53,7 +53,7 @@ bfc_error_t bfc_parse_jump_table(ssize_t **jump_table, const bfc_token_stream_t 
 	return BFC_ERR_OK;
 
 extra_closing_bracket:
-	snprintf(err_str, sizeof(err_str), "Found an extra ']' at line %lu.", toks[i].line);
+	snprintf(err_str, sizeof(err_str), "Found an extra ']' at line %u.", toks[i].line);
 
 	err = bfc_make_error_with_token(ERR_MISMATCHED_BRACKET, err_str, toks[i]);
 
@@ -65,7 +65,7 @@ extra_closing_bracket:
 missing_closing_bracket:
 	snprintf(
 		err_str, sizeof(err_str), 
-		"Missing a closing bracket ']' for opening bracket '[' at line %lu.", 
+		"Missing a closing bracket ']' for opening bracket '[' at line %u.", 
 		toks[stack[sp - 1]].line
 	);
 	

@@ -45,7 +45,7 @@ void bfc_log_error(const bfc_error_t err, const struct bfc_program_t *const prog
 
 	if (err.code == ERR_MISSING_BRACKET || err.code == ERR_MISMATCHED_BRACKET) {
 		fprintf(
-			stderr, COL_INFO "%s[%lu, %lu]: " COL_ERROR "%s" COL_OFF COL_INFO ": %s\n" COL_OFF, 
+			stderr, COL_INFO "%s[%u, %u]: " COL_ERROR "%s" COL_OFF COL_INFO ": %s\n" COL_OFF, 
 			bfc_program_getname((bfc_program_t*) program), err.token.line, err.token.col, bfc_get_error_code(err.code), err.msg
 		);
 

@@ -30,16 +30,16 @@ typedef struct {
 	bfc_token_t token;
 } bfc_error_t;
 
-#define BFC_ERR_OK ((bfc_error_t) {     \
-	.code = ERR_OK,                     \
-	.msg = {0},                         \
-	.token = {0}                        \
+#define BFC_ERR_OK ((bfc_error_t) { \
+	.code = ERR_OK,                 \
+	.msg = {0},                     \
+	.token = {0}                    \
 })
 
-#define BFC_ERR_ALLOC ((bfc_error_t) {     \
-	.code = ERR_ALLOC,                     \
-	.msg = "Memory allocation failure!",   \
-	.token = {0}                           \
+#define BFC_ERR_ALLOC ((bfc_error_t) {   \
+	.code = ERR_ALLOC,                   \
+	.msg = "Memory allocation failure!", \
+	.token = {0}                         \
 })
 
 

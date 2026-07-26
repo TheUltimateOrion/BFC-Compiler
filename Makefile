@@ -2,12 +2,13 @@ CC        := clang
 TARGET    := bfc
 SRC_DIR   := src
 OBJ_DIR   := obj
+CSTD	  := c23
 
 # 1. Set the default configuration to 'debug' if not specified
 CONFIG    ?= debug
 
 # 2. Define flags and paths based on the chosen configuration
-BASE_CFLAGS := -Wall -Wextra -pedantic -Wuninitialized -Iinclude
+BASE_CFLAGS := -Wall -Wextra -pedantic -Wuninitialized -Iinclude -std=$(CSTD)
 
 ifeq ($(CONFIG),release)
     CFLAGS    := $(BASE_CFLAGS) -O3 -DNDEBUG
