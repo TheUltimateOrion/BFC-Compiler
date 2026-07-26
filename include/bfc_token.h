@@ -31,6 +31,7 @@ typedef struct {
 	size_t length;
 } bfc_token_stream_t;
 
+[[nodiscard, gnu::const]]
 bfc_token_t bfc_make_token(const bfc_token_type_t tok_type, const uint32_t line, const uint32_t col);
 
 #endif // __BFC_TOKEN_H

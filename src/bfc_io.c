@@ -114,15 +114,17 @@ void bfc_program_destroy(bfc_program_t **pprogram) {
 	*pprogram = NULL;
 }
 
-const char *bfc_program_getname(const bfc_program_t *const program) {
+const char *bfc_program_getname(const bfc_program_t *program) {
+	
+    const char *name = program->path;
 
-	const char *start = program->path;
-	const char *end = program->path;
-	while (end != NULL) {
-		end = strchr(start, '/');
-	}
+    for (const char *p = program->path; *p != '\0'; ++p) {
+        if (*p == '/' || *p == '\\') {
+            name = p + 1;
+        }
+    }
 
-	return start;
+    return name;
 }
 
 char *bfc_program_getline(const bfc_program_t *const program, const size_t n) {

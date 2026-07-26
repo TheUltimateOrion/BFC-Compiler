@@ -20,6 +20,11 @@ typedef struct {
 
 void bfc_cmd_help(void);
 
-bfc_error_t bfc_process_args(bfc_args_t *const cmd_args, int argc, char **argv);
+[[gnu::nonnull(1)]]
+bfc_error_t bfc_process_args(
+	bfc_args_t *const cmd_args, 
+	int argc, 
+	char **argv
+);
 
 #endif // __BFC_CLI_H

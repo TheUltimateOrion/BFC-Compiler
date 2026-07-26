@@ -2,3 +2,4 @@
 -Wextra
 -pedantic
 -Iinclude
+-std=c23

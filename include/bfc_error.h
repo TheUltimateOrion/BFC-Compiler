@@ -24,7 +24,7 @@ typedef enum {
 #undef X
 } bfc_err_code_t;
 
-typedef struct {
+typedef struct [[nodiscard("bfc_error_t result must be checked")]] {
 	bfc_err_code_t code;
 	char msg[512];
 	bfc_token_t token;
@@ -43,10 +43,25 @@ typedef struct {
 })
 
 
-bfc_error_t bfc_make_error(const bfc_err_code_t error_code, const char *msg);
-bfc_error_t bfc_make_error_with_token(const bfc_err_code_t error_code, const char *msg, const bfc_token_t token);
+bfc_error_t bfc_make_error(
+	const bfc_err_code_t error_code, 
+	const char *msg
+);
+
+bfc_error_t bfc_make_error_with_token(
+	const bfc_err_code_t error_code, 
+	const char *msg, 
+	const bfc_token_t token
+);
+
+[[nodiscard, gnu::const, gnu::returns_nonnull]]
 const char *bfc_get_error_code(const bfc_err_code_t error_code);
-void bfc_log_error(const bfc_error_t err, const struct bfc_program_t *const program);
+
+[[gnu::cold]]
+void bfc_log_error(
+	const bfc_error_t err, 
+	const struct bfc_program_t *const program
+);
 
 
 #endif // __BFC_ERROR_H

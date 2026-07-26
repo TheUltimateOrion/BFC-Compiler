@@ -12,9 +12,26 @@ typedef struct {
 	size_t line_count;
 } bfc_program_t;
 
-bfc_error_t bfc_program_create(bfc_program_t **program, const char *file_path);
+[[gnu::nonnull(1, 2)]]
+bfc_error_t bfc_program_create(
+	bfc_program_t **program, 
+	const char *file_path
+);
+
 void bfc_program_destroy(bfc_program_t **pprogram);
+
+[[nodiscard,
+  gnu::pure,
+  gnu::nonnull(1),
+  gnu::returns_nonnull]]
 const char *bfc_program_getname(const bfc_program_t *const program);
-char *bfc_program_getline(const bfc_program_t *const program, const size_t n);
+
+[[nodiscard,
+  gnu::malloc,
+  gnu::nonnull(1)]]
+char *bfc_program_getline(
+	const bfc_program_t *const program, 
+	const size_t n
+);
 
 #endif // __BFC_IO_H

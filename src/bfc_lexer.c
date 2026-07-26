@@ -4,7 +4,7 @@
 #include <stdbool.h>
 
 bfc_token_t bfc_make_token(const bfc_token_type_t tok_type, const uint32_t line, const uint32_t col) {
-
+	
 	return (bfc_token_t) {
 		.type = tok_type, 
 		.line = line, 

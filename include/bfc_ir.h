@@ -39,10 +39,21 @@ typedef struct {
 	size_t capacity;
 } bfc_ir_stack_t;
 
-bfc_ir_instr_t bfc_ir_make_imm_instr(const bfc_ir_token_type_t ir_token_type, const ssize_t imm);
+[[nodiscard, gnu::const]]
+bfc_ir_instr_t bfc_ir_make_imm_instr(
+	const bfc_ir_token_type_t ir_token_type, 
+	const ssize_t imm
+);
+
+[[nodiscard, gnu::const]]
 bfc_ir_instr_t bfc_ir_make_zero_instr(const bfc_ir_token_type_t ir_token_type);
+
+[[gnu::nonnull(1, 2)]]
 bfc_error_t bfc_ir_create(bfc_ir_block_t **root_block, const bfc_token_stream_t *const tok_stream);
+
+[[gnu::nonnull(1)]]
 bfc_error_t bfc_ir_optimize_rep(bfc_ir_block_t **ir_block);
+
 void bfc_ir_destroy(bfc_ir_block_t **proot_block);
 
 #endif // __BFC_IR_H
