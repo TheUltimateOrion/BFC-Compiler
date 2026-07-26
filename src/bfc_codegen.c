@@ -31,23 +31,28 @@ bfc_error_t bfc_codegen(bfc_asm_t **asm_prog, const bfc_ir_block_t *const ir_blo
 
 bfc_error_t bfc_codegen_x86_64(bfc_asm_t **asm_prog, const bfc_ir_block_t *const ir_block)  {
 	(*asm_prog)->arch = ARCH_X86_64;
+	(void) ir_block; // suppress unused parameter warning
 
 	return bfc_make_error(ERR_INTERNAL, "x86_64 generation not supported yet!");
 }
 
 bfc_error_t bfc_codegen_i386(bfc_asm_t **asm_prog, const bfc_ir_block_t *const ir_block) {
 	(*asm_prog)->arch = ARCH_i386;
+	(void) ir_block; // suppress unused parameter warning
+
 	return bfc_make_error(ERR_INTERNAL, "i386 generation not supported yet!");
 }
 
 bfc_error_t bfc_codegen_aarch64(bfc_asm_t **asm_prog, const bfc_ir_block_t *const ir_block) {
 	(*asm_prog)->arch = ARCH_aarch64;
+	(void) ir_block; // suppress unused parameter warning
 
 	return BFC_ERR_OK;
 }
 
 bfc_error_t bfc_codegen_arm32(bfc_asm_t **asm_prog, const bfc_ir_block_t *const ir_block) {
 	(*asm_prog)->arch = ARCH_arm32;
+	(void) ir_block; // suppress unused parameter warning
 
 	return bfc_make_error(ERR_INTERNAL, "arm32 generation not supported yet!");
 }

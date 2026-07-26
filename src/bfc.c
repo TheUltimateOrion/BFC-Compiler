@@ -14,7 +14,6 @@
 		goto end;                    \
 	}
 
-
 int main(int argc, char** argv) {
 
 	int ret = EXIT_FAILURE;
