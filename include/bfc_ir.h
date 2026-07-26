@@ -5,13 +5,18 @@
 
 #include "bfc_error.h"
 
+#define IR_LIST		\
+	X(IR_ADD)       \
+	X(IR_MOVE)      \
+	X(IR_PUT)       \
+	X(IR_GET)       \
+	X(IR_SET)       \
+	X(IR_LOOP)
+
 typedef enum {
-	IR_ADD,
-	IR_MOVE,
-	IR_PUT,
-	IR_GET,
-	IR_SET,
-	IR_LOOP,
+#define X(ir_token_type) ir_token_type,
+	IR_LIST
+#undef X
 } bfc_ir_token_type_t;
 
 struct bfc_ir_block_t;
