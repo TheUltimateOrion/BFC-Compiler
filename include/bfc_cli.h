@@ -1,31 +1,23 @@
-#ifndef __BFC_CLI_H
-#define __BFC_CLI_H
+#ifndef BFC_CLI_H
+#define BFC_CLI_H
 
-#include <stdint.h>
+#include <stdbool.h>
 
 #include "bfc_error.h"
 
 typedef struct
 {
-    union
-    {
-        struct
-        {
-            uint8_t do_assemble   : 1;
-            uint8_t ask_help      : 1;
-            uint8_t f_no_comments : 1;
-        };
+    bool do_assemble;
+    bool ask_help;
+    bool f_no_comments;
 
-        uint8_t flags;
-    };
-
-    char* input;
-    char* outputs[UINT8_MAX];
+    const char* input;
+    const char* output;
 } bfc_args_t;
 
 void bfc_cmd_help(void);
 
 [[gnu::nonnull(1)]]
-bfc_error_t bfc_process_args(bfc_args_t* const cmd_args, int argc, char** argv);
+bfc_error_t bfc_process_args(bfc_args_t* cmd_args, int argc, char* const argv[]);
 
-#endif  // __BFC_CLI_H
+#endif  // BFC_CLI_H
