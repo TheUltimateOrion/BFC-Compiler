@@ -8,60 +8,65 @@
 
 #include <stdlib.h>
 
-#define CHECK_ERROR(err)            \
-	if (err.code != ERR_OK) {            \
-		bfc_log_error(err, (struct bfc_program_t*) program); \
-		goto end;                    \
-	}
+#define CHECK_ERROR(err)                                     \
+    if (err.code != ERR_OK)                                  \
+    {                                                        \
+        bfc_log_error(err, (struct bfc_program_t*) program); \
+        goto end;                                            \
+    }
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
+    int        ret      = EXIT_FAILURE;
 
-	int ret = EXIT_FAILURE;
+    bfc_args_t cmd_args = {0};
 
-	bfc_args_t cmd_args = {0};
+    [[gnu::cleanup(bfc_program_destroy)]]
+    bfc_program_t* program = nullptr;
 
-	bfc_program_t *program         = NULL;
-	bfc_token_stream_t *tok_stream = NULL;
-	ssize_t *jump_table            = NULL;
-	bfc_ir_block_t *root_block     = NULL;
-	bfc_asm_t *asm_prog            = NULL;
+    [[gnu::cleanup(bfc_token_stream_destroy)]]
+    bfc_token_stream_t* tok_stream = nullptr;
 
-	bfc_error_t err;
+    [[gnu::cleanup(bfc_jump_table_destroy)]]
+    ssize_t* jump_table = nullptr;
 
-	err = bfc_process_args(&cmd_args, argc, argv);
-	CHECK_ERROR(err);
+    [[gnu::cleanup(bfc_ir_destroy)]]
+    bfc_ir_block_t* root_block = nullptr;
 
-	if (cmd_args.ask_help) {
-		bfc_cmd_help();
-		goto end;
-	}
+    [[gnu::cleanup(bfc_asm_destroy)]]
+    bfc_asm_t*  asm_prog = nullptr;
 
-	err = bfc_program_create(&program, cmd_args.input);
-	CHECK_ERROR(err);
-	
-	err = bfc_lex(&tok_stream, program, cmd_args);
-	CHECK_ERROR(err);
+    bfc_error_t err;
 
-	err = bfc_parse_jump_table(&jump_table, tok_stream);
-	CHECK_ERROR(err);
+    err = bfc_process_args(&cmd_args, argc, argv);
+    CHECK_ERROR(err);
 
-	err = bfc_ir_create(&root_block, tok_stream);
-	CHECK_ERROR(err);
+    if (cmd_args.ask_help)
+    {
+        bfc_cmd_help();
+        goto end;
+    }
 
-	err = bfc_ir_optimize_rep(&root_block);
-	CHECK_ERROR(err);
+    err = bfc_program_create(&program, cmd_args.input);
+    CHECK_ERROR(err);
 
-	err = bfc_codegen(&asm_prog, root_block);
-	CHECK_ERROR(err);
+    err = bfc_lex(&tok_stream, program, cmd_args);
+    CHECK_ERROR(err);
 
-	ret = EXIT_SUCCESS;
+    err = bfc_parse_jump_table(&jump_table, tok_stream);
+    CHECK_ERROR(err);
+
+    err = bfc_ir_create(&root_block, tok_stream);
+    CHECK_ERROR(err);
+
+    err = bfc_ir_optimize_rep(&root_block);
+    CHECK_ERROR(err);
+
+    err = bfc_codegen(&asm_prog, root_block);
+    CHECK_ERROR(err);
+
+    ret = EXIT_SUCCESS;
 
 end:
-	if (program)    bfc_program_destroy(&program);
-	if (tok_stream) bfc_token_stream_destroy(&tok_stream);
-	if (jump_table) bfc_jump_table_destroy(&jump_table);
-	if (root_block) bfc_ir_destroy(&root_block);
-	if (asm_prog)   bfc_asm_destroy(&asm_prog);
-
-	return ret;
+    return ret;
 }

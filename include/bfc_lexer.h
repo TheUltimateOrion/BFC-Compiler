@@ -10,11 +10,11 @@
 
 [[gnu::nonnull(1, 2)]]
 bfc_error_t bfc_lex(
-    bfc_token_stream_t **token_stream, 
-    const bfc_program_t *const program, 
-    const bfc_args_t cmd_args
+    bfc_token_stream_t**       token_stream,
+    bfc_program_t const* const program,
+    bfc_args_t const           cmd_args
 );
 
-void bfc_token_stream_destroy(bfc_token_stream_t **ptok_stream);
+void bfc_token_stream_destroy(bfc_token_stream_t** ptok_stream);
 
-#endif // __BFC_LEXER_H
+#endif  // __BFC_LEXER_H

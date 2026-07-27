@@ -1,116 +1,128 @@
 #include "bfc_lexer.h"
 
-#include <stdlib.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
-bfc_token_t bfc_make_token(const bfc_token_type_t tok_type, const uint32_t line, const uint32_t col) {
-	
-	return (bfc_token_t) {
-		.type = tok_type, 
-		.line = line, 
-		.col = col
-	};
+bfc_token_t bfc_make_token(bfc_token_type_t const tok_type, uint32_t const line, uint32_t const col)
+{ return (bfc_token_t) {.type = tok_type, .line = line, .col = col}; }
+
+void bfc_token_stream_destroy(bfc_token_stream_t** ptok_stream)
+{
+    if (!ptok_stream || !*ptok_stream) { return; }
+
+    free((*ptok_stream)->tokens);
+    free(*ptok_stream);
+
+    *ptok_stream = nullptr;
 }
 
-void bfc_token_stream_destroy(bfc_token_stream_t **ptok_stream) {
+bfc_error_t bfc_lex(
+    bfc_token_stream_t**       token_stream,
+    bfc_program_t const* const program,
+    bfc_args_t const           cmd_args
+)
+{
+    bfc_error_t err                = BFC_ERR_ALLOC;
 
-	if (!ptok_stream || !*ptok_stream) return;
+    *token_stream                  = nullptr;
 
-	free((*ptok_stream)->tokens);
-	free(*ptok_stream);
+    bfc_token_stream_t* tok_stream = calloc(1, sizeof(*tok_stream));
+    if (!tok_stream) { goto end; }
 
-	*ptok_stream = NULL;
-}
+    if (program->file_size == 0)
+    {
+        *token_stream = tok_stream;
+        tok_stream    = nullptr;
+        err           = BFC_ERR_OK;
+        goto end;
+    }
 
-bfc_error_t bfc_lex(bfc_token_stream_t **token_stream, const bfc_program_t *const program, const bfc_args_t cmd_args) {
+    tok_stream->tokens = malloc(program->file_size * sizeof(*tok_stream->tokens));
+    if (!tok_stream->tokens) { goto end; }
 
-	bfc_error_t err = BFC_ERR_OK;
+    size_t   token_list_size = 0;
+    size_t   buffer_index    = 0;
 
-	*token_stream = NULL;
-	
-	bfc_token_stream_t *tok_stream = NULL;
+    uint32_t line            = 1;
+    uint32_t col             = 1;
 
-	if (program->file_size == 0) goto end;
+    bool     in_comment      = false;
 
-	err = BFC_ERR_ALLOC;
+#define EMIT_TOKEN(toktype)                                                                        \
+    if (!in_comment) tok_stream->tokens[token_list_size++] = bfc_make_token((toktype), line, col);
 
-	tok_stream = (bfc_token_stream_t*) malloc(sizeof(bfc_token_stream_t));
-	if (!tok_stream) goto end;
+    while (program->buffer[buffer_index] != '\0')
+    {
+        switch (program->buffer[buffer_index])
+        {
+            case ';': {
+                if (cmd_args.f_no_comments) { break; }
 
-	tok_stream->tokens = NULL;
-	tok_stream->length = 0;
+                in_comment = true;
+            }
+            break;
 
-	tok_stream->tokens = (bfc_token_t*) malloc(program->file_size * sizeof(bfc_token_t));
-	if (!tok_stream->tokens) goto end;
-
-	size_t token_list_size = 0;
-	size_t buffer_index = 0;
-
-	uint32_t line = 1;
-	uint32_t col = 1;
-
-	bool in_comment = false;
-
-#define EMIT_TOKEN(toktype) \
-	if (!in_comment) tok_stream->tokens[token_list_size++] = bfc_make_token((toktype), line, col);
-
-	while (program->buffer[buffer_index] != '\0') {
-		switch (program->buffer[buffer_index]) {
-			case ';': {
-				if (cmd_args.f_no_comments) break;
-
-				in_comment = true;
-			} break;
-
-#define X(tok_type, tok_char) case tok_char: { EMIT_TOKEN(tok_type); } break;
-			TOKEN_MAP
+#define X(tok_type, tok_char) \
+    case tok_char: {          \
+        EMIT_TOKEN(tok_type); \
+    }                         \
+    break;
+                TOKEN_MAP
 #undef X
 
-
 #if defined(_WIN32) || defined(_WIN64)
-			case '\r': {
-				++buffer_index;
-				continue;
-			} break;
+            case '\r': {
+                ++buffer_index;
+                continue;
+            }
+            break;
 #endif
-			case '\n': {
-				++line;
-				col = 1;
-				++buffer_index;
-				in_comment = false;
-				continue;
-			} break;
+            case '\n': {
+                ++line;
+                col = 1;
+                ++buffer_index;
+                in_comment = false;
+                continue;
+            }
+            break;
 
-			default: break;
-		}
+            default: break;
+        }
 
-		++buffer_index;
-		++col;
-	}
+        ++buffer_index;
+        ++col;
+    }
 
 #undef EMIT_TOKEN
 
-	if (token_list_size > 0) {
-		bfc_token_t *tmp = realloc(tok_stream->tokens, token_list_size * sizeof(bfc_token_t));
-		if (tmp) tok_stream->tokens = tmp;
-	} else {
-		free(tok_stream->tokens);
-		tok_stream->tokens = NULL;
-	}
-	
-	tok_stream->length = token_list_size;
+    if (token_list_size > 0)
+    {
+        bfc_token_t* tmp = realloc(
+            tok_stream->tokens, token_list_size * sizeof(*tok_stream->tokens)
+        );
 
-	*token_stream = tok_stream;
+        if (tmp) { tok_stream->tokens = tmp; }
+    }
+    else
+    {
+        free(tok_stream->tokens);
+        tok_stream->tokens = nullptr;
+    }
 
-	tok_stream = NULL;
+    tok_stream->length = token_list_size;
 
-	err = BFC_ERR_OK;
+    *token_stream      = tok_stream;
+
+    tok_stream         = nullptr;
+
+    err                = BFC_ERR_OK;
 
 end:
-	if (tok_stream) {
-		free(tok_stream->tokens);
-		free(tok_stream);
-	}
+    if (tok_stream)
+    {
+        free(tok_stream->tokens);
+        free(tok_stream);
+    }
 
-	return err;
+    return err;
 }
