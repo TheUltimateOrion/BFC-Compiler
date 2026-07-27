@@ -4,11 +4,16 @@
 #include <stdlib.h>
 
 bfc_token_t bfc_make_token(bfc_token_type_t const tok_type, uint32_t const line, uint32_t const col)
-{ return (bfc_token_t) {.type = tok_type, .line = line, .col = col}; }
+{
+    return (bfc_token_t) {.type = tok_type, .line = line, .col = col};
+}
 
 void bfc_token_stream_destroy(bfc_token_stream_t** ptok_stream)
 {
-    if (!ptok_stream || !*ptok_stream) { return; }
+    if (!ptok_stream || !*ptok_stream)
+    {
+        return;
+    }
 
     free((*ptok_stream)->tokens);
     free(*ptok_stream);
@@ -22,12 +27,15 @@ bfc_error_t bfc_lex(
     bfc_args_t const           cmd_args
 )
 {
-    bfc_error_t err                = BFC_ERR_ALLOC;
+    bfc_error_t err = BFC_ERR_ALLOC;
 
-    *token_stream                  = nullptr;
+    *token_stream = nullptr;
 
     bfc_token_stream_t* tok_stream = calloc(1, sizeof(*tok_stream));
-    if (!tok_stream) { goto end; }
+    if (!tok_stream)
+    {
+        goto end;
+    }
 
     if (program->file_size == 0)
     {
@@ -38,15 +46,18 @@ bfc_error_t bfc_lex(
     }
 
     tok_stream->tokens = malloc(program->file_size * sizeof(*tok_stream->tokens));
-    if (!tok_stream->tokens) { goto end; }
+    if (!tok_stream->tokens)
+    {
+        goto end;
+    }
 
-    size_t   token_list_size = 0;
-    size_t   buffer_index    = 0;
+    size_t token_list_size = 0;
+    size_t buffer_index    = 0;
 
-    uint32_t line            = 1;
-    uint32_t col             = 1;
+    uint32_t line = 1;
+    uint32_t col  = 1;
 
-    bool     in_comment      = false;
+    bool in_comment = false;
 
 #define EMIT_TOKEN(toktype)                                                                        \
     if (!in_comment) tok_stream->tokens[token_list_size++] = bfc_make_token((toktype), line, col);
@@ -56,7 +67,10 @@ bfc_error_t bfc_lex(
         switch (program->buffer[buffer_index])
         {
             case ';': {
-                if (cmd_args.f_no_comments) { break; }
+                if (cmd_args.f_no_comments)
+                {
+                    break;
+                }
 
                 in_comment = true;
             }
@@ -97,11 +111,13 @@ bfc_error_t bfc_lex(
 
     if (token_list_size > 0)
     {
-        bfc_token_t* tmp = realloc(
-            tok_stream->tokens, token_list_size * sizeof(*tok_stream->tokens)
-        );
+        bfc_token_t* tmp
+            = realloc(tok_stream->tokens, token_list_size * sizeof(*tok_stream->tokens));
 
-        if (tmp) { tok_stream->tokens = tmp; }
+        if (tmp)
+        {
+            tok_stream->tokens = tmp;
+        }
     }
     else
     {
@@ -111,11 +127,11 @@ bfc_error_t bfc_lex(
 
     tok_stream->length = token_list_size;
 
-    *token_stream      = tok_stream;
+    *token_stream = tok_stream;
 
-    tok_stream         = nullptr;
+    tok_stream = nullptr;
 
-    err                = BFC_ERR_OK;
+    err = BFC_ERR_OK;
 
 end:
     if (tok_stream)

@@ -17,7 +17,7 @@
 
 int main(int argc, char** argv)
 {
-    int        ret      = EXIT_FAILURE;
+    int ret = EXIT_FAILURE;
 
     bfc_args_t cmd_args = {0};
 
@@ -34,7 +34,7 @@ int main(int argc, char** argv)
     bfc_ir_block_t* root_block = nullptr;
 
     [[gnu::cleanup(bfc_asm_destroy)]]
-    bfc_asm_t*  asm_prog = nullptr;
+    bfc_asm_t* asm_prog = nullptr;
 
     bfc_error_t err;
 

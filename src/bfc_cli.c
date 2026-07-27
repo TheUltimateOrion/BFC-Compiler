@@ -19,8 +19,8 @@ void bfc_cmd_help(void)
 
 bfc_error_t bfc_process_args(bfc_args_t* const cmd_args, int argc, char** argv)
 {
-    cmd_args->flags    = 0;
-    cmd_args->input    = "";
+    cmd_args->flags = 0;
+    cmd_args->input = "";
 
     int     i          = 1;
     uint8_t output_num = 0;
@@ -36,14 +36,20 @@ bfc_error_t bfc_process_args(bfc_args_t* const cmd_args, int argc, char** argv)
             cmd_args->outputs[output_num] = argv[i + 1];
             ++output_num;
         }
-        else if (strcmp(argv[i], "-S") == 0) { cmd_args->do_assemble = 0x1; }
+        else if (strcmp(argv[i], "-S") == 0)
+        {
+            cmd_args->do_assemble = 0x1;
+        }
         else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0)
         {
             cmd_args->ask_help = 0x1;
 
             return BFC_ERR_OK;
         }
-        else if (strcmp(argv[i], "--fno-comments") == 0) { cmd_args->f_no_comments = 1; }
+        else if (strcmp(argv[i], "--fno-comments") == 0)
+        {
+            cmd_args->f_no_comments = 1;
+        }
         else if (argv[i][0] == '-')
         {
             char err_str[512];
@@ -64,8 +70,10 @@ bfc_error_t bfc_process_args(bfc_args_t* const cmd_args, int argc, char** argv)
         ++i;
     }
 
-    if (strcmp(cmd_args->input, "") == 0) { return bfc_make_error(ERR_ARGS, "No input files!"); }
+    if (strcmp(cmd_args->input, "") == 0)
+    {
+        return bfc_make_error(ERR_ARGS, "No input files!");
+    }
 
     return BFC_ERR_OK;
 }
-

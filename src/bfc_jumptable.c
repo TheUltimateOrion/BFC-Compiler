@@ -10,15 +10,24 @@ bfc_error_t bfc_parse_jump_table(ssize_t** jump_table, bfc_token_stream_t const*
     bfc_error_t err;
     char        err_str[512];
 
-    size_t      n = tok_stream->length;
-    if (n == 0) { return BFC_ERR_OK; }
+    size_t n = tok_stream->length;
+    if (n == 0)
+    {
+        return BFC_ERR_OK;
+    }
 
-    bfc_token_t const* toks   = tok_stream->tokens;
+    bfc_token_t const* toks = tok_stream->tokens;
 
-    ssize_t*           jtable = malloc(n * sizeof(*jtable));
-    if (!jtable) { return BFC_ERR_ALLOC; }
+    ssize_t* jtable = malloc(n * sizeof(*jtable));
+    if (!jtable)
+    {
+        return BFC_ERR_ALLOC;
+    }
 
-    for (size_t i = 0; i < n; ++i) { jtable[i] = -1; }
+    for (size_t i = 0; i < n; ++i)
+    {
+        jtable[i] = -1;
+    }
 
     size_t* stack = malloc(n * sizeof(*stack));
     if (!stack)
@@ -34,18 +43,27 @@ bfc_error_t bfc_parse_jump_table(ssize_t** jump_table, bfc_token_stream_t const*
     size_t j;
     for (i = 0; i < n; ++i)
     {
-        if (toks[i].type == TT_LOOP_START) { stack[sp++] = i; }
+        if (toks[i].type == TT_LOOP_START)
+        {
+            stack[sp++] = i;
+        }
         else if (toks[i].type == TT_LOOP_END)
         {
-            if (sp == 0) { goto extra_closing_bracket; }
-            j         = stack[--sp];
+            if (sp == 0)
+            {
+                goto extra_closing_bracket;
+            }
+            j = stack[--sp];
 
             jtable[j] = (ssize_t) i;
             jtable[i] = (ssize_t) j;
         }
     }
 
-    if (sp != 0) { goto missing_closing_bracket; }
+    if (sp != 0)
+    {
+        goto missing_closing_bracket;
+    }
 
     free(stack);
 
@@ -79,10 +97,12 @@ missing_closing_bracket:
 
 void bfc_jump_table_destroy(ssize_t** pjump_table)
 {
-    if (!pjump_table || !*pjump_table) { return; }
+    if (!pjump_table || !*pjump_table)
+    {
+        return;
+    }
 
     free(*pjump_table);
 
     *pjump_table = nullptr;
 }
-

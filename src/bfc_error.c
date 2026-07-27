@@ -10,25 +10,28 @@ bfc_error_t bfc_make_error(bfc_err_code_t const error_code, char const* msg)
 {
     bfc_error_t err = {0};
 
-    err.code        = error_code;
+    err.code = error_code;
 
-    if (msg) { snprintf(err.msg, sizeof(err.msg), "%s", msg); }
+    if (msg)
+    {
+        snprintf(err.msg, sizeof(err.msg), "%s", msg);
+    }
 
     return err;
 }
 
-bfc_error_t bfc_make_error_with_token(
-    bfc_err_code_t const error_code,
-    char const*          msg,
-    bfc_token_t const    token
-)
+bfc_error_t
+bfc_make_error_with_token(bfc_err_code_t const error_code, char const* msg, bfc_token_t const token)
 {
     bfc_error_t err = {0};
 
-    err.code        = error_code;
-    err.token       = token;
+    err.code  = error_code;
+    err.token = token;
 
-    if (msg) { snprintf(err.msg, sizeof(err.msg), "%s", msg); }
+    if (msg)
+    {
+        snprintf(err.msg, sizeof(err.msg), "%s", msg);
+    }
 
     return err;
 }
@@ -64,7 +67,7 @@ void bfc_log_error(bfc_error_t const err, const struct bfc_program_t* const prog
 
         char* line_buf = bfc_program_getline((bfc_program_t*) program, (size_t) err.token.line);
 
-        int   line_num_width = (err.token.line > 0) ? (int) log10(err.token.line) + 1 : 1;
+        int line_num_width = (err.token.line > 0) ? (int) log10(err.token.line) + 1 : 1;
 
         fprintf(stderr, "   %lu | %s\n", (size_t) err.token.line, line_buf);
         fprintf(stderr, "   %*s | %*c\n", line_num_width, "", (int) err.token.col, '^');

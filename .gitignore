@@ -60,3 +60,6 @@ dkms.conf
 
 # Configuration files
 .clangd
+
+# Output
+bfc

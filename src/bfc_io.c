@@ -65,7 +65,7 @@ bfc_error_t bfc_program_create(bfc_program_t** program, char const* file_path)
 
         prog->file_size = file_size;
 
-        prog->path      = malloc(strlen(file_path) + 1);
+        prog->path = malloc(strlen(file_path) + 1);
         if (!prog->path)
         {
             free(prog->buffer);
@@ -99,7 +99,10 @@ bfc_error_t bfc_program_create(bfc_program_t** program, char const* file_path)
         size_t i         = 0;
         while (prog->buffer[i] != '\0')
         {
-            if (prog->buffer[i] == '\n') { ++prog->line_count; }
+            if (prog->buffer[i] == '\n')
+            {
+                ++prog->line_count;
+            }
             ++i;
         }
 
@@ -114,7 +117,10 @@ bfc_error_t bfc_program_create(bfc_program_t** program, char const* file_path)
 
 void bfc_program_destroy(bfc_program_t** pprogram)
 {
-    if (!pprogram || !*pprogram) { return; }
+    if (!pprogram || !*pprogram)
+    {
+        return;
+    }
 
     free((*pprogram)->path);
     free((*pprogram)->buffer);
@@ -129,7 +135,10 @@ char const* bfc_program_getname(bfc_program_t const* program)
 
     for (char const* p = program->path; *p != '\0'; ++p)
     {
-        if (*p == '/' || *p == '\\') { name = p + 1; }
+        if (*p == '/' || *p == '\\')
+        {
+            name = p + 1;
+        }
     }
 
     return name;
@@ -137,7 +146,10 @@ char const* bfc_program_getname(bfc_program_t const* program)
 
 char* bfc_program_getline(bfc_program_t const* const program, size_t const n)
 {
-    if (n > program->line_count) { return nullptr; }
+    if (n > program->line_count)
+    {
+        return nullptr;
+    }
 
     size_t      current_line = 1;
     char const* start        = program->buffer;
@@ -146,7 +158,10 @@ char* bfc_program_getline(bfc_program_t const* const program, size_t const n)
     while (current_line < n)
     {
         end = strchr(start, '\n');
-        if (end == nullptr) { return nullptr; }
+        if (end == nullptr)
+        {
+            return nullptr;
+        }
 
         start = end + 1;
         ++current_line;
@@ -155,13 +170,19 @@ char* bfc_program_getline(bfc_program_t const* const program, size_t const n)
     end = strchr(start, '\n');
 
     size_t line_len;
-    if (end == nullptr) { line_len = strlen(start); }
+    if (end == nullptr)
+    {
+        line_len = strlen(start);
+    }
     else
     {
         line_len = end - start;
     }
 
-    if (line_len > 4096) { return nullptr; }
+    if (line_len > 4096)
+    {
+        return nullptr;
+    }
 
     char* line_buf = malloc(4096 * sizeof(*line_buf));
 

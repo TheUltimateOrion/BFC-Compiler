@@ -5,12 +5,18 @@
 bfc_error_t bfc_codegen(bfc_asm_t** asm_prog, bfc_ir_block_t const* const ir_block)
 {
     *asm_prog = calloc(1, sizeof(**asm_prog));
-    if (!(*asm_prog)) { return BFC_ERR_ALLOC; }
+    if (!(*asm_prog))
+    {
+        return BFC_ERR_ALLOC;
+    }
 
     (*asm_prog)->capacity = 4096;
 
-    (*asm_prog)->buffer   = malloc((*asm_prog)->capacity * sizeof(*(*asm_prog)->buffer));
-    if (!(*asm_prog)->buffer) { return BFC_ERR_ALLOC; }
+    (*asm_prog)->buffer = malloc((*asm_prog)->capacity * sizeof(*(*asm_prog)->buffer));
+    if (!(*asm_prog)->buffer)
+    {
+        return BFC_ERR_ALLOC;
+    }
 
     (*asm_prog)->buffer[0] = '\0';
 
@@ -61,7 +67,10 @@ bfc_error_t bfc_codegen_arm32(bfc_asm_t** asm_prog, bfc_ir_block_t const* const 
 
 void bfc_asm_destroy(bfc_asm_t** pasm_prog)
 {
-    if (!pasm_prog || !*pasm_prog) { return; }
+    if (!pasm_prog || !*pasm_prog)
+    {
+        return;
+    }
 
     free((*pasm_prog)->buffer);
     free(*pasm_prog);

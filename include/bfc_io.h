@@ -16,7 +16,7 @@ typedef struct
 [[gnu::nonnull(1, 2)]]
 bfc_error_t bfc_program_create(bfc_program_t** program, char const* file_path);
 
-void        bfc_program_destroy(bfc_program_t** pprogram);
+void bfc_program_destroy(bfc_program_t** pprogram);
 
 [[nodiscard, gnu::pure, gnu::nonnull(1), gnu::returns_nonnull]]
 char const* bfc_program_getname(bfc_program_t const* const program);

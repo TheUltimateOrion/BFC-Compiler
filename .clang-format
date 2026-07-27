@@ -1,152 +1,165 @@
+---
+BasedOnStyle: LLVM
 Language: C
 
-AccessModifierOffset: -4
-AlignAfterOpenBracket: BlockIndent
-AlignArrayOfStructures: Left
-AlignConsecutiveAssignments: AcrossEmptyLinesAndComments
-AlignConsecutiveBitFields: AcrossEmptyLinesAndComments
-AlignConsecutiveDeclarations: AcrossEmptyLinesAndComments
-AlignConsecutiveShortCaseStatements:
-  Enabled: true
-  AcrossEmptyLines: true
-  AcrossComments: true
-  AlignCaseColons: true
-AlignEscapedNewlines: LeftWithLastLine
-AlignOperands: AlignAfterOperator
-AlignTrailingComments: Always
+# General
+ColumnLimit: 100
+DisableFormat: false
+LineEnding: LF
+InsertNewlineAtEOF: true
 
-AllowAllArgumentsOnNextLine: false
-AllowAllParametersOfDeclarationOnNextLine: false
-AllowShortBlocksOnASingleLine: Always
-AllowShortCaseLabelsOnASingleLine: true
-AllowShortCompoundRequirementOnASingleLine: true
-AllowShortEnumsOnASingleLine: false
-AllowShortFunctionsOnASingleLine: All
-AllowShortIfStatementsOnASingleLine: WithoutElse
-AllowShortLambdasOnASingleLine: All
-AllowShortLoopsOnASingleLine: true
-AllowShortNamespacesOnASingleLine: false
+# Indentation
+IndentWidth: 4
+ContinuationIndentWidth: 4
+TabWidth: 8
+UseTab: Never
 
-AlwaysBreakBeforeMultilineStrings: false
+IndentCaseBlocks: false
+IndentCaseLabels: true
+IndentExternBlock: false
+IndentGotoLabels: false
+IndentPPDirectives: BeforeHash
+IndentWrappedFunctionNames: false
 
-BinPackArguments: true
-BinPackParameters: OnePerLine
-
-BitFieldColonSpacing: Both
-
+# Braces: Allman style
+BreakBeforeBraces: Custom
 BraceWrapping:
-  AfterClass: true
   AfterControlStatement: Always
   AfterEnum: true
+  AfterExternBlock: true
   AfterFunction: true
-  AfterNamespace: true
   AfterStruct: true
   AfterUnion: true
-  AfterExternBlock: true
-  BeforeCatch: true
   BeforeElse: true
-  BeforeLambdaBody: true
   BeforeWhile: true
   IndentBraces: false
   SplitEmptyFunction: false
   SplitEmptyRecord: false
-  SplitEmptyNamespace: false
 
-BreakAfterAttributes: Leave
-BreakArrays: false
+# Multiline brackets and parentheses
+AlignAfterOpenBracket: true
+BracedInitializerIndentWidth: 4
+
+BreakAfterOpenBracketBracedList: true
+BreakAfterOpenBracketFunction: true
+BreakAfterOpenBracketIf: true
+BreakAfterOpenBracketLoop: true
+BreakAfterOpenBracketSwitch: true
+
+BreakBeforeCloseBracketBracedList: true
+BreakBeforeCloseBracketFunction: true
+BreakBeforeCloseBracketIf: true
+BreakBeforeCloseBracketLoop: true
+BreakBeforeCloseBracketSwitch: true
+
+# Functions and argument lists
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+
+BinPackArguments: true
+BinPackParameters: OnePerLine
+
+BreakFunctionDefinitionParameters: false
+
+# Short statements
+AllowShortBlocksOnASingleLine: Empty
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortEnumsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortLoopsOnASingleLine: false
+
+# Alignment
+AlignArrayOfStructures: Left
+
+AlignConsecutiveAssignments:
+  Enabled: true
+  AcrossEmptyLines: false
+  AcrossComments: false
+  AlignCompound: false
+  PadOperators: true
+
+AlignConsecutiveBitFields:
+  Enabled: true
+  AcrossEmptyLines: false
+  AcrossComments: false
+
+AlignConsecutiveDeclarations:
+  Enabled: true
+  AcrossEmptyLines: false
+  AcrossComments: false
+  AlignFunctionDeclarations: false
+  AlignFunctionPointers: true
+
+AlignConsecutiveShortCaseStatements:
+  Enabled: true
+  AcrossEmptyLines: false
+  AcrossComments: false
+  AlignCaseColons: true
+
+AlignEscapedNewlines: LeftWithLastLine
+AlignOperands: AlignAfterOperator
+
+AlignTrailingComments:
+  Kind: Always
+  OverEmptyLines: 0
+  AlignPPAndNotPP: false
+
+# Binary and ternary expressions
 BreakBeforeBinaryOperators: All
-BreakBeforeBraces: Custom
-BreakBeforeConceptDeclarations: Always
 BreakBeforeTernaryOperators: true
 BreakBinaryOperations: Never
-BreakConstructorInitializers: BeforeColon
-BreakFunctionDefinitionParameters: false
-BreakInheritanceList: AfterComma
-BreakStringLiterals: true
-BreakTemplateDeclarations: false
 
-ColumnLimit: 100
-CommentPragmas: "^ IWYU pragma:"
-CompactNamespaces: false
-ContinuationIndentWidth: 4
+# Attributes
+BreakAfterAttributes: Leave
 
-PackConstructorInitializers: BinPack
-ConstructorInitializerIndentWidth: 4
-Cpp11BracedListStyle: true
-
+# Pointers and qualifiers
 DerivePointerAlignment: false
-DisableFormat: false
-EmptyLineAfterAccessModifier: Never
-EmptyLineBeforeAccessModifier: Always
-ExperimentalAutoDetectBinPacking: false
-FixNamespaceComments: true
-
-IncludeBlocks: Preserve
-IncludeIsMainRegex: "(Test)?$"
-
-IndentAccessModifiers: false
-IndentCaseBlocks: false
-IndentCaseLabels: true
-IndentExportBlock: false
-IndentExternBlock: false
-IndentGotoLabels: false
-IndentPPDirectives: BeforeHash
-IndentRequiresClause: true
-IndentWidth: 4
-IndentWrappedFunctionNames: false
-InsertBraces: true
-InsertNewlineAtEOF: true
-IntegerLiteralSeparator:
-    Binary: 4
-    BinaryMinDigits: 8
-    Decimal: -1
-    Hex: -1
-KeepEmptyLines:
-  AtEndOfFile: true
-  AtStartOfBlock: false
-  AtStartOfFile: false
-LambdaBodyIndentation: Signature
-LineEnding: LF
-MacroBlockBegin: ""
-MacroBlockEnd: ""
-MaxEmptyLinesToKeep: 1
-NamespaceIndentation: All
-
-PenaltyBreakAssignment: 2000
-PenaltyBreakBeforeMemberAccess: 200
-PenaltyBreakOpenParenthesis: 1
-PenaltyReturnTypeOnItsOwnLine: 301
-
 PointerAlignment: Left
-QualifierAlignment: Custom
-QualifierOrder: [constexpr, inline, static, friend, volatile, restrict, type, const]
-ReferenceAlignment: Pointer
-ReflowComments: Always
-
-RemoveBracesLLVM: false
-RemoveEmptyLinesInUnwrappedLines: true
-RemoveParentheses: Leave
-RemoveSemicolon: false
-
-RequiresClausePosition: WithPreceding
-RequiresExpressionIndentation: OuterScope
-
-SeparateDefinitionBlocks: Always
-
-SortIncludes: CaseInsensitive
-SortUsingDeclarations: Lexicographic
-
-SpaceAfterCStyleCast: true
-SpaceAfterLogicalNot: false
-SpaceAfterTemplateKeyword: true
-
+QualifierAlignment: Leave
 SpaceAroundPointerQualifiers: Default
 
+# Initializers
+Cpp11BracedListStyle: true
+BreakStringLiterals: true
+
+# Preprocessor
+CommentPragmas: "^ IWYU pragma:"
+
+# Includes
+IncludeBlocks: Preserve
+IncludeIsMainRegex: "(Test)?$"
+SortIncludes: CaseInsensitive
+
+# Empty lines
+MaxEmptyLinesToKeep: 1
+
+KeepEmptyLines:
+  AtEndOfFile: false
+  AtStartOfBlock: false
+  AtStartOfFile: false
+
+RemoveEmptyLinesInUnwrappedLines: true
+SeparateDefinitionBlocks: Always
+
+# Comments
+ReflowComments: Always
+SpacesBeforeTrailingComments: 2
+
+SpacesInLineCommentPrefix:
+  Minimum: 1
+  Maximum: 1
+
+# Spacing
+BitFieldColonSpacing: Both
+SpaceAfterCStyleCast: true
+SpaceAfterLogicalNot: false
 SpaceBeforeAssignmentOperators: true
 SpaceBeforeCaseColon: false
 SpaceBeforeCpp11BracedList: true
-SpaceBeforeCtorInitializerColon: true
-SpaceBeforeInheritanceColon: true
+SpaceBeforeSquareBrackets: false
+SpacesInSquareBrackets: false
+
 SpaceBeforeParens: Custom
 SpaceBeforeParensOptions:
   AfterControlStatements: true
@@ -154,20 +167,8 @@ SpaceBeforeParensOptions:
   AfterFunctionDeclarationName: false
   AfterFunctionDefinitionName: false
   AfterIfMacros: true
-  AfterOverloadedOperator: false
-  AfterPlacementOperator: false
-  AfterRequiresInClause: false
-  AfterRequiresInExpression: false
   BeforeNonEmptyParentheses: false
-SpaceBeforeRangeBasedForLoopColon: true
-SpaceBeforeSquareBrackets: false
-SpaceInEmptyBlock: true
-SpacesBeforeTrailingComments: 2
-SpacesInAngles: Never
-SpacesInContainerLiterals: true
-SpacesInLineCommentPrefix:
-  Minimum: 1
-  Maximum: 1
+
 SpacesInParens: Custom
 SpacesInParensOptions:
   ExceptDoubleParentheses: false
@@ -175,6 +176,19 @@ SpacesInParensOptions:
   InCStyleCasts: false
   InEmptyParentheses: false
   Other: false
-SpacesInSquareBrackets: false
-TabWidth: 8
-UseTab: Never
+
+# Numeric literals
+IntegerLiteralSeparator:
+  Binary: 4
+  BinaryMinDigits: 8
+  Decimal: -1
+  Hex: -1
+
+# Do not make semantic source-code changes
+InsertBraces: false
+RemoveBracesLLVM: false
+RemoveParentheses: Leave
+RemoveSemicolon: false
+
+# Bin-packing detection
+ExperimentalAutoDetectBinPacking: false

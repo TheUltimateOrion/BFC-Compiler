@@ -19,8 +19,8 @@ bfc_ir_instr_t bfc_ir_make_zero_instr(bfc_ir_token_type_t const ir_token_type)
 
 bfc_error_t bfc_ir_create(bfc_ir_block_t** root_block, bfc_token_stream_t const* const tok_stream)
 {
-    bfc_error_t err      = BFC_ERR_ALLOC;
-    *root_block          = nullptr;
+    bfc_error_t err = BFC_ERR_ALLOC;
+    *root_block     = nullptr;
 
     bfc_ir_stack_t stack = (bfc_ir_stack_t) {
         .capacity = 5,
@@ -28,29 +28,41 @@ bfc_error_t bfc_ir_create(bfc_ir_block_t** root_block, bfc_token_stream_t const*
     };
 
     stack.blocks = calloc(stack.capacity, sizeof(*stack.blocks));
-    if (!stack.blocks) { goto end; }
+    if (!stack.blocks)
+    {
+        goto end;
+    }
 
     stack.blocks[stack.length] = calloc(1, sizeof(*stack.blocks[stack.length]));
-    if (!stack.blocks[stack.length]) { goto end; }
+    if (!stack.blocks[stack.length])
+    {
+        goto end;
+    }
 
     bfc_ir_block_t* current_block = stack.blocks[stack.length++];
     current_block->instr          = nullptr;
     current_block->capacity       = 10;
     current_block->length         = 0;
 
-    current_block->instr          = malloc(current_block->capacity * sizeof(*current_block->instr));
-    if (!current_block->instr) { goto end; }
+    current_block->instr = malloc(current_block->capacity * sizeof(*current_block->instr));
+    if (!current_block->instr)
+    {
+        goto end;
+    }
 
     size_t i = 0;
     while (i < tok_stream->length)
     {
         if (stack.length >= stack.capacity)
         {
-            size_t           new_capacity = stack.capacity * 2;
+            size_t new_capacity = stack.capacity * 2;
 
             bfc_ir_block_t** tmp = realloc(stack.blocks, new_capacity * sizeof(*stack.blocks));
 
-            if (!tmp) { goto end; }
+            if (!tmp)
+            {
+                goto end;
+            }
 
             stack.blocks   = tmp;
             stack.capacity = new_capacity;
@@ -58,13 +70,15 @@ bfc_error_t bfc_ir_create(bfc_ir_block_t** root_block, bfc_token_stream_t const*
 
         if (current_block->length >= current_block->capacity)
         {
-            size_t          new_capacity = current_block->capacity * 2;
+            size_t new_capacity = current_block->capacity * 2;
 
-            bfc_ir_instr_t* tmp          = realloc(
-                current_block->instr, new_capacity * sizeof(*current_block->instr)
-            );
+            bfc_ir_instr_t* tmp
+                = realloc(current_block->instr, new_capacity * sizeof(*current_block->instr));
 
-            if (!tmp) { goto end; }
+            if (!tmp)
+            {
+                goto end;
+            }
 
             current_block->instr    = tmp;
             current_block->capacity = new_capacity;
@@ -108,21 +122,26 @@ bfc_error_t bfc_ir_create(bfc_ir_block_t** root_block, bfc_token_stream_t const*
                     .val = {.body = calloc(1, sizeof(bfc_ir_block_t))},
                 };
 
-                if (!loop_instr.val.body) { goto end; }
+                if (!loop_instr.val.body)
+                {
+                    goto end;
+                }
 
                 current_block->instr[current_block->length++] = loop_instr;
 
                 stack.blocks[stack.length] = (bfc_ir_block_t*) loop_instr.val.body;
 
-                current_block              = stack.blocks[stack.length++];
-                current_block->capacity    = 10;
-                current_block->length      = 0;
+                current_block           = stack.blocks[stack.length++];
+                current_block->capacity = 10;
+                current_block->length   = 0;
 
-                current_block->instr       = malloc(
-                    current_block->capacity * sizeof(*current_block->instr)
-                );
+                current_block->instr
+                    = malloc(current_block->capacity * sizeof(*current_block->instr));
 
-                if (!current_block->instr) { goto end; }
+                if (!current_block->instr)
+                {
+                    goto end;
+                }
             }
             break;
 
@@ -141,8 +160,14 @@ bfc_error_t bfc_ir_create(bfc_ir_block_t** root_block, bfc_token_stream_t const*
 end:
     if (stack.blocks)
     {
-        if (err.code == ERR_OK) { *root_block = stack.blocks[0]; }
-        else if (stack.blocks[0]) { bfc_ir_destroy(&stack.blocks[0]); }
+        if (err.code == ERR_OK)
+        {
+            *root_block = stack.blocks[0];
+        }
+        else if (stack.blocks[0])
+        {
+            bfc_ir_destroy(&stack.blocks[0]);
+        }
 
         free(stack.blocks);
     }
@@ -152,19 +177,28 @@ end:
 
 bfc_error_t bfc_ir_optimize_rep(bfc_ir_block_t** ir_block)
 {
-    if ((*ir_block)->length == 0) { return BFC_ERR_OK; }
+    if ((*ir_block)->length == 0)
+    {
+        return BFC_ERR_OK;
+    }
 
-    bfc_error_t     err             = BFC_ERR_ALLOC;
+    bfc_error_t err = BFC_ERR_ALLOC;
 
     bfc_ir_block_t* optimized_block = calloc(1, sizeof(*optimized_block));
 
-    if (!optimized_block) { goto end; }
+    if (!optimized_block)
+    {
+        goto end;
+    }
 
     optimized_block->capacity = (*ir_block)->capacity;
 
-    optimized_block->instr    = malloc(optimized_block->capacity * sizeof(*optimized_block->instr));
+    optimized_block->instr = malloc(optimized_block->capacity * sizeof(*optimized_block->instr));
 
-    if (!optimized_block->instr) { goto end; }
+    if (!optimized_block->instr)
+    {
+        goto end;
+    }
 
     bfc_ir_instr_t prev_instr  = (*ir_block)->instr[0];
     ssize_t        instr_delta = 0;
@@ -182,9 +216,8 @@ bfc_error_t bfc_ir_optimize_rep(bfc_ir_block_t** ir_block)
 
             if (instr_delta != 0)
             {
-                optimized_block->instr[optimized_block->length++] = bfc_ir_make_imm_instr(
-                    prev_instr.op, instr_delta
-                );
+                optimized_block->instr[optimized_block->length++]
+                    = bfc_ir_make_imm_instr(prev_instr.op, instr_delta);
             }
 
             instr_delta = 0;
@@ -195,7 +228,10 @@ bfc_error_t bfc_ir_optimize_rep(bfc_ir_block_t** ir_block)
             {
                 err = bfc_ir_optimize_rep((bfc_ir_block_t**) &(*ir_block)->instr[i].val.body);
 
-                if (err.code != ERR_OK) { goto end; }
+                if (err.code != ERR_OK)
+                {
+                    goto end;
+                }
             }
 
             optimized_block->instr[optimized_block->length++] = (*ir_block)->instr[i];
@@ -209,7 +245,7 @@ bfc_error_t bfc_ir_optimize_rep(bfc_ir_block_t** ir_block)
     *ir_block       = optimized_block;
     optimized_block = nullptr;
 
-    err             = BFC_ERR_OK;
+    err = BFC_ERR_OK;
 
 end:
     if (optimized_block)
@@ -223,7 +259,10 @@ end:
 
 void bfc_ir_destroy(bfc_ir_block_t** proot_block)
 {
-    if (!proot_block || !*proot_block) { return; }
+    if (!proot_block || !*proot_block)
+    {
+        return;
+    }
 
     for (size_t i = 0; i < (*proot_block)->length; ++i)
     {

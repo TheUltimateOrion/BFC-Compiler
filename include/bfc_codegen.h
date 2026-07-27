@@ -46,9 +46,9 @@ typedef struct
     bfc_backend_t backend;
     size_t        label_id;
 
-    char*         buffer;
-    size_t        length;
-    size_t        capacity;
+    char*  buffer;
+    size_t length;
+    size_t capacity;
 } bfc_asm_t;
 
 bfc_error_t bfc_codegen(bfc_asm_t** asm_prog, bfc_ir_block_t const* const ir_block);
@@ -57,10 +57,10 @@ bfc_error_t bfc_codegen_i386(bfc_asm_t** asm_prog, bfc_ir_block_t const* const i
 bfc_error_t bfc_codegen_aarch64(bfc_asm_t** asm_prog, bfc_ir_block_t const* const ir_block);
 bfc_error_t bfc_codegen_arm32(bfc_asm_t** asm_prog, bfc_ir_block_t const* const ir_block);
 
-void        bfc_codegen_emit_asm(bfc_asm_t** asm_prog, char const* asm_str);
-void        bfc_codegen_emit_label(bfc_asm_t** asm_prog, char const* label_str);
-void        bfc_codegen_emit_block(bfc_asm_t** asm_prog, bfc_ir_block_t const* const ir_block);
+void bfc_codegen_emit_asm(bfc_asm_t** asm_prog, char const* asm_str);
+void bfc_codegen_emit_label(bfc_asm_t** asm_prog, char const* label_str);
+void bfc_codegen_emit_block(bfc_asm_t** asm_prog, bfc_ir_block_t const* const ir_block);
 
-void        bfc_asm_destroy(bfc_asm_t** pasm_prog);
+void bfc_asm_destroy(bfc_asm_t** pasm_prog);
 
 #endif  // __BFC_CODEGEN_H
