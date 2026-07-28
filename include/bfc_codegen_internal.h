@@ -52,15 +52,18 @@ struct bfc_asm
     size_t capacity;
 };
 
-bfc_error_t bfc_codegen_emit_text(bfc_asm_t* asm_prog, const char* text);
-
-bfc_error_t bfc_codegen_emit_block(bfc_asm_t* asm_prog, const bfc_ir_block_t* ir_block);
-
 extern const bfc_backend_t BFC_BACKEND_X86_64;
 extern const bfc_backend_t BFC_BACKEND_I386;
 extern const bfc_backend_t BFC_BACKEND_AARCH64;
 extern const bfc_backend_t BFC_BACKEND_ARM32;
 
+[[gnu::nonnull(1, 2)]]
+bfc_error_t bfc_codegen_emit_text(bfc_asm_t* asm_prog, const char* text);
+
+[[gnu::nonnull(1, 2)]]
+bfc_error_t bfc_codegen_emit_block(bfc_asm_t* asm_prog, const bfc_ir_block_t* ir_block);
+
+[[gnu::const]]
 const bfc_backend_t* bfc_backend_select(void);
 
 #endif
