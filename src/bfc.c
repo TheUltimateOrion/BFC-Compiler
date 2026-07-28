@@ -1,3 +1,7 @@
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+
 #include "bfc_cli.h"
 #include "bfc_codegen.h"
 #include "bfc_error.h"
@@ -5,10 +9,7 @@
 #include "bfc_ir.h"
 #include "bfc_jumptable.h"
 #include "bfc_lexer.h"
-
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include "bfc_target.h"
 
 #define CHECK_ERROR(error_)                 \
     do                                      \
@@ -69,7 +70,21 @@ int main(int argc, char** argv)
     err = bfc_ir_optimize_rep(&root_block);
     CHECK_ERROR(err);
 
-    err = bfc_codegen(&asm_prog, root_block);
+    bfc_target_t target;
+
+    if (cmd_args.target)
+    {
+        err = bfc_target_parse(&target, cmd_args.target);
+
+        CHECK_ERROR(err);
+    }
+    else
+    {
+        target = bfc_target_host();
+    }
+
+    err = bfc_codegen(&asm_prog, root_block, target);
+
     CHECK_ERROR(err);
 
     if (cmd_args.do_assemble)

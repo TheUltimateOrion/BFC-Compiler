@@ -13,6 +13,7 @@ typedef struct
 
     const char* input;
     const char* output;
+    const char* target;
 } bfc_args_t;
 
 void bfc_cmd_help(void);

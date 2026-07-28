@@ -197,8 +197,8 @@ static bfc_error_t emit_loop_test_nz(bfc_asm_t* asm_prog, const char* label)
     );
 }
 
-const bfc_backend_t BFC_BACKEND_MACOS_AARCH64 = {
-    .target = {.arch = BFC_ARCH_AARCH64, .os = BFC_OS_MACOS},
+const bfc_backend_t BFC_BACKEND_MACOS_X86_64 = {
+    .target = {.arch = BFC_ARCH_X86_64, .os = BFC_OS_MACOS},
 
     .emit_header       = emit_header,
     .emit_data_section = emit_data_section,

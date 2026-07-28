@@ -6,43 +6,86 @@
 #include <stdlib.h>
 #include <string.h>
 
-[[gnu::const]]
-static const bfc_backend_t* bfc_backend_select(void)
+static const bfc_target_entry_t BFC_TARGETS[] = {
+    {
+        .name = "aarch64-apple-darwin",
+        .target = {
+            .arch = BFC_ARCH_AARCH64,
+            .os   = BFC_OS_MACOS,
+        },
+    },
+    {
+        .name = "x86_64-apple-darwin",
+        .target = {
+            .arch = BFC_ARCH_X86_64,
+            .os   = BFC_OS_MACOS,
+        },
+    },
+    {
+        .name = "aarch64-unknown-linux-gnu",
+        .target = {
+            .arch = BFC_ARCH_AARCH64,
+            .os   = BFC_OS_LINUX,
+        },
+    },
+    {
+        .name = "x86_64-unknown-linux-gnu",
+        .target = {
+            .arch = BFC_ARCH_X86_64,
+            .os   = BFC_OS_LINUX,
+        },
+    },
+    {
+        .name = "aarch64-pc-windows-msvc",
+        .target = {
+            .arch = BFC_ARCH_AARCH64,
+            .os   = BFC_OS_WINDOWS,
+        },
+    },
+    {
+        .name = "x86_64-pc-windows-msvc",
+        .target = {
+            .arch = BFC_ARCH_X86_64,
+            .os   = BFC_OS_WINDOWS,
+        },
+    },
+    {
+        .name = "i386-pc-windows-msvc",
+        .target = {
+            .arch = BFC_ARCH_I386,
+            .os   = BFC_OS_WINDOWS,
+        },
+    },
+};
+
+bfc_error_t bfc_target_parse(bfc_target_t* target, const char* triple)
 {
-#if defined(__aarch64__) || defined(_M_ARM64)
+    for (size_t i = 0; i < sizeof(BFC_TARGETS) / sizeof(BFC_TARGETS[0]); ++i)
+    {
+        if (strcmp(triple, BFC_TARGETS[i].name) == 0)
+        {
+            *target = BFC_TARGETS[i].target;
+            return BFC_ERR_OK;
+        }
+    }
 
-    #if defined(__APPLE__)
-    return &BFC_BACKEND_MACOS_AARCH64;
-    #elif defined(__linux__)
-    return &BFC_BACKEND_LINUX_AARCH64;
-    #elif defined(_WIN32)
-    return &BFC_BACKEND_WINDOWS_AARCH64;
-    #else
+    return bfc_make_error(ERR_ARGS, "Unknown or unsupported target triple");
+}
+
+[[gnu::pure]]
+static const bfc_backend_t* bfc_backend_select(bfc_target_t target)
+{
+    if (target.arch == BFC_ARCH_AARCH64 && target.os == BFC_OS_MACOS)
+    {
+        return &BFC_BACKEND_MACOS_AARCH64;
+    }
+
+    if (target.arch == BFC_ARCH_X86_64 && target.os == BFC_OS_MACOS)
+    {
+        return &BFC_BACKEND_MACOS_X86_64;
+    }
+
     return nullptr;
-    #endif
-
-#elif defined(__x86_64__) || defined(_M_X64)
-
-    #if defined(__APPLE__)
-    return &BFC_BACKEND_MACOS_X86_64;
-    #elif defined(__linux__)
-    return &BFC_BACKEND_LINUX_X86_64;
-    #elif defined(_WIN32)
-    return &BFC_BACKEND_WINDOWS_X86_64;
-    #else
-    return nullptr;
-    #endif
-
-#elif defined(__i386__) || defined(_M_IX86)
-
-    #if defined(_WIN32)
-    return &BFC_BACKEND_WINDOWS_I386;
-    #else
-    return nullptr;
-    #endif
-#else
-    return nullptr;
-#endif
 }
 
 [[gnu::nonnull(1, 2)]]
@@ -172,15 +215,15 @@ bfc_error_t bfc_codegen_emitf(bfc_asm_t* asm_prog, const char* format, ...)
     return bfc_codegen_emit_text(asm_prog, buffer);
 }
 
-bfc_error_t bfc_codegen(bfc_asm_t** out_asm, const bfc_ir_block_t* ir_block)
+bfc_error_t bfc_codegen(bfc_asm_t** out_asm, const bfc_ir_block_t* ir_block, bfc_target_t target)
 {
     *out_asm = nullptr;
 
-    const bfc_backend_t* backend = bfc_backend_select();
+    const bfc_backend_t* backend = bfc_backend_select(target);
 
     if (!backend)
     {
-        return bfc_make_error(ERR_INTERNAL, "Unsupported code generation target");
+        return bfc_make_error(ERR_ARGS, "No backend is available for the requested target");
     }
 
     bfc_asm_t* asm_prog = calloc(1, sizeof(*asm_prog));

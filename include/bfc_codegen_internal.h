@@ -5,26 +5,11 @@
 #include <stdint.h>
 
 #include "bfc_codegen.h"
-
-typedef enum
-{
-    BFC_ARCH_X86_64,
-    BFC_ARCH_I386,
-    BFC_ARCH_AARCH64,
-    BFC_ARCH_ARM32,
-} bfc_arch_t;
-
-typedef enum
-{
-    BFC_OS_WINDOWS,
-    BFC_OS_MACOS,
-    BFC_OS_LINUX,
-} bfc_os_t;
+#include "bfc_target.h"
 
 typedef struct
 {
-    bfc_arch_t arch;
-    bfc_os_t   os;
+    bfc_target_t target;
 
     bfc_error_t (*emit_header)(bfc_asm_t* asm_prog);
     bfc_error_t (*emit_data_section)(bfc_asm_t* asm_prog);
@@ -41,6 +26,12 @@ typedef struct
 
     bfc_error_t (*emit_loop_test_nz)(bfc_asm_t* asm_prog, const char* label);
 } bfc_backend_t;
+
+typedef struct
+{
+    const char*  name;
+    bfc_target_t target;
+} bfc_target_entry_t;
 
 struct bfc_asm
 {
@@ -72,4 +63,4 @@ bfc_error_t bfc_codegen_emit_block(bfc_asm_t* asm_prog, const bfc_ir_block_t* ir
 [[gnu::nonnull(1, 2), gnu::format(printf, 2, 3)]]
 bfc_error_t bfc_codegen_emitf(bfc_asm_t* asm_prog, const char* format, ...);
 
-#endif
+#endif  // BFC_CODEGEN_INTERNAL_H

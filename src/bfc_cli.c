@@ -54,6 +54,18 @@ static bfc_error_t bfc_set_output(bfc_args_t* args, const char* value)
     return BFC_ERR_OK;
 }
 
+[[gnu::nonnull(1, 2)]]
+static bfc_error_t bfc_set_target(bfc_args_t* args, const char* value)
+{
+    if (args->target)
+    {
+        return bfc_make_error(ERR_ARGS, "Target specified more than once");
+    }
+
+    args->target = value;
+    return BFC_ERR_OK;
+}
+
 static const bfc_option_t BFC_OPTIONS[] = {
     {
      .short_name  = "-h",
@@ -83,6 +95,13 @@ static const bfc_option_t BFC_OPTIONS[] = {
      .description = "Write output to <file>",
      .handler     = bfc_set_output,
      },
+    {
+     .short_name  = "-t",
+     .long_name   = "--target",
+     .value_name  = "triple",
+     .description = "Compile for the given target <triple>",
+     .handler     = bfc_set_target,
+     }
 };
 
 #define BFC_ARRAY_LENGTH(array) (sizeof(array) / sizeof((array)[0]))
