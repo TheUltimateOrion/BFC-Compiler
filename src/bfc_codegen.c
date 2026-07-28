@@ -4,39 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-bfc_error_t bfc_codegen_emit_text(bfc_asm_t* asm_prog, const char* text)
-{
-    const size_t text_length = strlen(text);
-    const size_t required    = asm_prog->length + text_length + 1;
-
-    if (required > asm_prog->capacity)
-    {
-        size_t new_capacity = asm_prog->capacity;
-
-        while (new_capacity < required)
-        {
-            new_capacity *= 2;
-        }
-
-        char* new_buffer = realloc(asm_prog->buffer, new_capacity);
-
-        if (!new_buffer)
-        {
-            return BFC_ERR_ALLOC;
-        }
-
-        asm_prog->buffer   = new_buffer;
-        asm_prog->capacity = new_capacity;
-    }
-
-    memcpy(asm_prog->buffer + asm_prog->length, text, text_length + 1);
-
-    asm_prog->length += text_length;
-
-    return BFC_ERR_OK;
-}
-
-static bfc_error_t emit_loop(bfc_asm_t* asm_prog, const bfc_ir_block_t* body)
+static bfc_error_t bfc_codegen_emit_loop(bfc_asm_t* asm_prog, const bfc_ir_block_t* body)
 {
     const size_t id = asm_prog->label_id++;
 
@@ -77,6 +45,38 @@ static bfc_error_t emit_loop(bfc_asm_t* asm_prog, const bfc_ir_block_t* body)
     return err;
 }
 
+bfc_error_t bfc_codegen_emit_text(bfc_asm_t* asm_prog, const char* text)
+{
+    const size_t text_length = strlen(text);
+    const size_t required    = asm_prog->length + text_length + 1;
+
+    if (required > asm_prog->capacity)
+    {
+        size_t new_capacity = asm_prog->capacity;
+
+        while (new_capacity < required)
+        {
+            new_capacity *= 2;
+        }
+
+        char* new_buffer = realloc(asm_prog->buffer, new_capacity);
+
+        if (!new_buffer)
+        {
+            return BFC_ERR_ALLOC;
+        }
+
+        asm_prog->buffer   = new_buffer;
+        asm_prog->capacity = new_capacity;
+    }
+
+    memcpy(asm_prog->buffer + asm_prog->length, text, text_length + 1);
+
+    asm_prog->length += text_length;
+
+    return BFC_ERR_OK;
+}
+
 bfc_error_t bfc_codegen_emit_block(bfc_asm_t* asm_prog, const bfc_ir_block_t* ir_block)
 {
     for (size_t i = 0; i < ir_block->length; ++i)
@@ -96,7 +96,9 @@ bfc_error_t bfc_codegen_emit_block(bfc_asm_t* asm_prog, const bfc_ir_block_t* ir
 
             case IR_SET: err = asm_prog->backend->emit_op_set(asm_prog, instr->val.imm); break;
 
-            case IR_LOOP: err = emit_loop(asm_prog, (const bfc_ir_block_t*) instr->val.body); break;
+            case IR_LOOP:
+                err = bfc_codegen_emit_loop(asm_prog, (const bfc_ir_block_t*) instr->val.body);
+                break;
 
             default: return bfc_make_error(ERR_INTERNAL, "Unknown IR instruction");
         }
@@ -188,13 +190,13 @@ void bfc_asm_destroy(bfc_asm_t** pasm_prog)
 const bfc_backend_t* bfc_backend_select(void)
 {
 #if defined(__x86_64__) || defined(_M_X64)
-    return bfc_backend_x86_64();
+    return &BFC_BACKEND_X86_64;
 #elif defined(__i386__) || defined(_M_IX86)
-    return bfc_backend_i386();
+    return &BFC_BACKEND_I386;
 #elif defined(__aarch64__) || defined(_M_ARM64)
-    return bfc_backend_aarch64();
+    return &BFC_BACKEND_AARCH64;
 #elif defined(__arm__) || defined(_M_ARM)
-    return bfc_backend_arm32();
+    return &BFC_BACKEND_ARM32;
 #else
     return nullptr;
 #endif
