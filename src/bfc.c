@@ -7,6 +7,7 @@
 #include "bfc_lexer.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 #define CHECK_ERROR(err)                                     \
     if (err.code != ERR_OK)                                  \
@@ -64,6 +65,14 @@ int main(int argc, char** argv)
 
     err = bfc_codegen(&asm_prog, root_block);
     CHECK_ERROR(err);
+
+    if (cmd_args.do_assemble)
+    {
+        err = bfc_asm_write_file(
+            asm_prog, cmd_args.output ? cmd_args.output : strcat((char*) cmd_args.input, ".s")
+        );
+        CHECK_ERROR(err);
+    }
 
     ret = EXIT_SUCCESS;
 
