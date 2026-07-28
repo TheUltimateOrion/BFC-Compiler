@@ -1,5 +1,5 @@
-#ifndef __BFC_IO_H
-#define __BFC_IO_H
+#ifndef BFC_IO_H
+#define BFC_IO_H
 
 #include <stddef.h>
 
@@ -24,4 +24,4 @@ char const* bfc_program_getname(bfc_program_t const* const program);
 [[nodiscard, gnu::malloc, gnu::nonnull(1)]]
 char* bfc_program_getline(bfc_program_t const* const program, size_t const n);
 
-#endif  // __BFC_IO_H
+#endif  // BFC_IO_H

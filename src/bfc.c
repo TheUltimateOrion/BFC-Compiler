@@ -28,7 +28,7 @@ int main(int argc, char** argv)
     bfc_token_stream_t* tok_stream = nullptr;
 
     [[gnu::cleanup(bfc_jump_table_destroy)]]
-    ssize_t* jump_table = nullptr;
+    int64_t* jump_table = nullptr;
 
     [[gnu::cleanup(bfc_ir_destroy)]]
     bfc_ir_block_t* root_block = nullptr;

@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-bfc_error_t bfc_parse_jump_table(ssize_t** jump_table, bfc_token_stream_t const* const tok_stream)
+bfc_error_t bfc_parse_jump_table(int64_t** jump_table, bfc_token_stream_t const* const tok_stream)
 {
     *jump_table = nullptr;
 
@@ -18,7 +18,7 @@ bfc_error_t bfc_parse_jump_table(ssize_t** jump_table, bfc_token_stream_t const*
 
     bfc_token_t const* toks = tok_stream->tokens;
 
-    ssize_t* jtable = malloc(n * sizeof(*jtable));
+    int64_t* jtable = malloc(n * sizeof(*jtable));
     if (!jtable)
     {
         return BFC_ERR_ALLOC;
@@ -55,8 +55,8 @@ bfc_error_t bfc_parse_jump_table(ssize_t** jump_table, bfc_token_stream_t const*
             }
             j = stack[--sp];
 
-            jtable[j] = (ssize_t) i;
-            jtable[i] = (ssize_t) j;
+            jtable[j] = (int64_t) i;
+            jtable[i] = (int64_t) j;
         }
     }
 
@@ -95,7 +95,7 @@ missing_closing_bracket:
     return err;
 }
 
-void bfc_jump_table_destroy(ssize_t** pjump_table)
+void bfc_jump_table_destroy(int64_t** pjump_table)
 {
     if (!pjump_table || !*pjump_table)
     {

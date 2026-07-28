@@ -2,7 +2,7 @@
 
 #include <stdlib.h>
 
-bfc_ir_instr_t bfc_ir_make_imm_instr(bfc_ir_token_type_t const ir_token_type, ssize_t const imm)
+bfc_ir_instr_t bfc_ir_make_imm_instr(bfc_ir_token_type_t const ir_token_type, int64_t const imm)
 {
     return (bfc_ir_instr_t) {
         .op  = ir_token_type,
@@ -201,7 +201,7 @@ bfc_error_t bfc_ir_optimize_rep(bfc_ir_block_t** ir_block)
     }
 
     bfc_ir_instr_t prev_instr  = (*ir_block)->instr[0];
-    ssize_t        instr_delta = 0;
+    int64_t        instr_delta = 0;
     size_t         i           = 0;
     while (i < (*ir_block)->length)
     {

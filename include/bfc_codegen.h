@@ -1,10 +1,9 @@
-#ifndef __BFC_CODEGEN_H
-#define __BFC_CODEGEN_H
-
-#include <sys/types.h>
+#ifndef BFC_CODEGEN_H
+#define BFC_CODEGEN_H
 
 #include "bfc_error.h"
 #include "bfc_ir.h"
+#include <stdint.h>
 
 typedef enum
 {
@@ -21,25 +20,25 @@ typedef enum
     OS_LINUX,
 } bfc_os_t;
 
-struct bfc_asm_t;
+typedef struct bfc_asm bfc_asm_t;
 
 typedef struct
 {
-    void (*emit_header)(struct bfc_asm_t* asm_prog);
-    void (*emit_data_section)(struct bfc_asm_t* asm_prog);
-    void (*emit_symbol)(struct bfc_asm_t* asm_prog);
-    void (*emit_end)(struct bfc_asm_t* asm_prog);
+    void (*emit_header)(bfc_asm_t* asm_prog);
+    void (*emit_data_section)(bfc_asm_t* asm_prog);
+    void (*emit_symbol)(bfc_asm_t* asm_prog);
+    void (*emit_end)(bfc_asm_t* asm_prog);
 
-    void (*emit_op_add)(struct bfc_asm_t* asm_prog, ssize_t imm);
-    void (*emit_op_move)(struct bfc_asm_t* asm_prog, ssize_t imm);
-    void (*emit_op_get)(struct bfc_asm_t* asm_prog);
-    void (*emit_op_put)(struct bfc_asm_t* asm_prog);
-    void (*emit_op_set)(struct bfc_asm_t* asm_prog, ssize_t imm);
-    void (*emit_loop_test_z)(struct bfc_asm_t* asm_prog, char const* label);
-    void (*emit_loop_test_nz)(struct bfc_asm_t* asm_prog, char const* label);
+    void (*emit_op_add)(bfc_asm_t* asm_prog, int64_t imm);
+    void (*emit_op_move)(bfc_asm_t* asm_prog, int64_t imm);
+    void (*emit_op_get)(bfc_asm_t* asm_prog);
+    void (*emit_op_put)(bfc_asm_t* asm_prog);
+    void (*emit_op_set)(bfc_asm_t* asm_prog, int64_t imm);
+    void (*emit_loop_test_z)(bfc_asm_t* asm_prog, char const* label);
+    void (*emit_loop_test_nz)(bfc_asm_t* asm_prog, char const* label);
 } bfc_backend_t;
 
-typedef struct
+struct bfc_asm
 {
     bfc_arch_t    arch;
     bfc_os_t      os;
@@ -49,7 +48,7 @@ typedef struct
     char*  buffer;
     size_t length;
     size_t capacity;
-} bfc_asm_t;
+};
 
 bfc_error_t bfc_codegen(bfc_asm_t** asm_prog, bfc_ir_block_t const* const ir_block);
 bfc_error_t bfc_codegen_x86_64(bfc_asm_t** asm_prog, bfc_ir_block_t const* const ir_block);
@@ -63,4 +62,4 @@ void bfc_codegen_emit_block(bfc_asm_t** asm_prog, bfc_ir_block_t const* const ir
 
 void bfc_asm_destroy(bfc_asm_t** pasm_prog);
 
-#endif  // __BFC_CODEGEN_H
+#endif  // BFC_CODEGEN_H

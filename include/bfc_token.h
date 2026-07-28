@@ -1,5 +1,5 @@
-#ifndef __BFC_TOKEN_H
-#define __BFC_TOKEN_H
+#ifndef BFC_TOKEN_H
+#define BFC_TOKEN_H
 
 #include <stddef.h>
 #include <stdint.h>
@@ -38,4 +38,4 @@ typedef struct
 bfc_token_t
 bfc_make_token(bfc_token_type_t const tok_type, uint32_t const line, uint32_t const col);
 
-#endif  // __BFC_TOKEN_H
+#endif  // BFC_TOKEN_H

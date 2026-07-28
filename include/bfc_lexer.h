@@ -1,5 +1,5 @@
-#ifndef __BFC_LEXER_H
-#define __BFC_LEXER_H
+#ifndef BFC_LEXER_H
+#define BFC_LEXER_H
 
 #include <stddef.h>
 #include <stdint.h>
@@ -17,4 +17,4 @@ bfc_error_t bfc_lex(
 
 void bfc_token_stream_destroy(bfc_token_stream_t** ptok_stream);
 
-#endif  // __BFC_LEXER_H
+#endif  // BFC_LEXER_H

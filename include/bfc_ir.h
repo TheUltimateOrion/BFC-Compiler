@@ -1,7 +1,5 @@
-#ifndef __BFC_IR_H
-#define __BFC_IR_H
-
-#include <sys/types.h>
+#ifndef BFC_IR_H
+#define BFC_IR_H
 
 #include "bfc_error.h"
 
@@ -15,7 +13,7 @@ typedef enum
     IR_LOOP
 } bfc_ir_token_type_t;
 
-struct bfc_ir_block_t;
+typedef struct bfc_ir_block bfc_ir_block_t;
 
 typedef struct
 {
@@ -23,18 +21,18 @@ typedef struct
 
     union
     {
-        ssize_t                imm;
+        int64_t                imm;
         struct bfc_ir_block_t* body;
     } val;
 } bfc_ir_instr_t;
 
-typedef struct
+struct bfc_ir_block
 {
     bfc_ir_instr_t* instr;
 
     size_t length;
     size_t capacity;
-} bfc_ir_block_t;
+};
 
 typedef struct
 {
@@ -45,7 +43,7 @@ typedef struct
 } bfc_ir_stack_t;
 
 [[nodiscard, gnu::const]]
-bfc_ir_instr_t bfc_ir_make_imm_instr(bfc_ir_token_type_t const ir_token_type, ssize_t const imm);
+bfc_ir_instr_t bfc_ir_make_imm_instr(bfc_ir_token_type_t const ir_token_type, int64_t const imm);
 
 [[nodiscard, gnu::const]]
 bfc_ir_instr_t bfc_ir_make_zero_instr(bfc_ir_token_type_t const ir_token_type);
@@ -58,4 +56,4 @@ bfc_error_t bfc_ir_optimize_rep(bfc_ir_block_t** ir_block);
 
 void bfc_ir_destroy(bfc_ir_block_t** proot_block);
 
-#endif  // __BFC_IR_H
+#endif  // BFC_IR_H

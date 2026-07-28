@@ -1,5 +1,5 @@
-#ifndef __BFC_ERROR_H
-#define __BFC_ERROR_H
+#ifndef BFC_ERROR_H
+#define BFC_ERROR_H
 
 #include "bfc_token.h"
 
@@ -51,4 +51,4 @@ char const* bfc_get_error_code(bfc_err_code_t const error_code);
 [[gnu::cold]]
 void bfc_log_error(bfc_error_t const err, const struct bfc_program_t* const program);
 
-#endif  // __BFC_ERROR_H
+#endif  // BFC_ERROR_H

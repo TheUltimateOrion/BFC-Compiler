@@ -15,6 +15,7 @@ typedef struct
     bfc_option_handler_t handler;
 } bfc_option_t;
 
+[[gnu::nonnull(1)]]
 static bfc_error_t bfc_set_help(bfc_args_t* args, const char* value)
 {
     (void) value;
@@ -23,6 +24,7 @@ static bfc_error_t bfc_set_help(bfc_args_t* args, const char* value)
     return BFC_ERR_OK;
 }
 
+[[gnu::nonnull(1)]]
 static bfc_error_t bfc_set_assemble(bfc_args_t* args, const char* value)
 {
     (void) value;
@@ -31,6 +33,7 @@ static bfc_error_t bfc_set_assemble(bfc_args_t* args, const char* value)
     return BFC_ERR_OK;
 }
 
+[[gnu::nonnull(1)]]
 static bfc_error_t bfc_set_no_comments(bfc_args_t* args, const char* value)
 {
     (void) value;
@@ -39,6 +42,7 @@ static bfc_error_t bfc_set_no_comments(bfc_args_t* args, const char* value)
     return BFC_ERR_OK;
 }
 
+[[gnu::nonnull(1, 2)]]
 static bfc_error_t bfc_set_output(bfc_args_t* args, const char* value)
 {
     if (args->output)
@@ -83,6 +87,7 @@ static const bfc_option_t BFC_OPTIONS[] = {
 
 #define BFC_ARRAY_LENGTH(array) (sizeof(array) / sizeof((array)[0]))
 
+[[gnu::pure, gnu::nonnull(1)]]
 static const bfc_option_t* bfc_find_option(const char* argument)
 {
     for (size_t i = 0; i < BFC_ARRAY_LENGTH(BFC_OPTIONS); ++i)
