@@ -1,7 +1,11 @@
 #ifndef BFC_IR_H
 #define BFC_IR_H
 
+#include <stddef.h>
+#include <stdint.h>
+
 #include "bfc_error.h"
+#include "bfc_token.h"
 
 typedef enum
 {
@@ -21,8 +25,8 @@ typedef struct
 
     union
     {
-        int64_t                imm;
-        struct bfc_ir_block_t* body;
+        int64_t         imm;
+        bfc_ir_block_t* body;
     } val;
 } bfc_ir_instr_t;
 

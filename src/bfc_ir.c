@@ -1,5 +1,7 @@
 #include "bfc_ir.h"
 
+#include <stddef.h>
+#include <stdint.h>
 #include <stdlib.h>
 
 bfc_ir_instr_t bfc_ir_make_imm_instr(bfc_ir_token_type_t const ir_token_type, int64_t const imm)
@@ -129,7 +131,7 @@ bfc_error_t bfc_ir_create(bfc_ir_block_t** root_block, bfc_token_stream_t const*
 
                 current_block->instr[current_block->length++] = loop_instr;
 
-                stack.blocks[stack.length] = (bfc_ir_block_t*) loop_instr.val.body;
+                stack.blocks[stack.length] = loop_instr.val.body;
 
                 current_block           = stack.blocks[stack.length++];
                 current_block->capacity = 10;
@@ -226,7 +228,7 @@ bfc_error_t bfc_ir_optimize_rep(bfc_ir_block_t** ir_block)
         {
             if ((*ir_block)->instr[i].op == IR_LOOP)
             {
-                err = bfc_ir_optimize_rep((bfc_ir_block_t**) &(*ir_block)->instr[i].val.body);
+                err = bfc_ir_optimize_rep(&(*ir_block)->instr[i].val.body);
 
                 if (err.code != ERR_OK)
                 {
@@ -268,7 +270,7 @@ void bfc_ir_destroy(bfc_ir_block_t** proot_block)
     {
         if ((*proot_block)->instr[i].op == IR_LOOP && (*proot_block)->instr[i].val.body)
         {
-            bfc_ir_destroy((bfc_ir_block_t**) &(*proot_block)->instr[i].val.body);
+            bfc_ir_destroy(&(*proot_block)->instr[i].val.body);
         }
     }
 

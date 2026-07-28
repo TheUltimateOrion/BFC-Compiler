@@ -1,9 +1,51 @@
 #include "bfc_codegen_internal.h"
 
+#include <stdarg.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+[[gnu::const]]
+static const bfc_backend_t* bfc_backend_select(void)
+{
+#if defined(__aarch64__) || defined(_M_ARM64)
+
+    #if defined(__APPLE__)
+    return &BFC_BACKEND_MACOS_AARCH64;
+    #elif defined(__linux__)
+    return &BFC_BACKEND_LINUX_AARCH64;
+    #elif defined(_WIN32)
+    return &BFC_BACKEND_WINDOWS_AARCH64;
+    #else
+    return nullptr;
+    #endif
+
+#elif defined(__x86_64__) || defined(_M_X64)
+
+    #if defined(__APPLE__)
+    return &BFC_BACKEND_MACOS_X86_64;
+    #elif defined(__linux__)
+    return &BFC_BACKEND_LINUX_X86_64;
+    #elif defined(_WIN32)
+    return &BFC_BACKEND_WINDOWS_X86_64;
+    #else
+    return nullptr;
+    #endif
+
+#elif defined(__i386__) || defined(_M_IX86)
+
+    #if defined(_WIN32)
+    return &BFC_BACKEND_WINDOWS_I386;
+    #else
+    return nullptr;
+    #endif
+#else
+    return nullptr;
+#endif
+}
+
+[[gnu::nonnull(1, 2)]]
 static bfc_error_t bfc_codegen_emit_loop(bfc_asm_t* asm_prog, const bfc_ir_block_t* body)
 {
     const size_t id = asm_prog->label_id++;
@@ -96,9 +138,7 @@ bfc_error_t bfc_codegen_emit_block(bfc_asm_t* asm_prog, const bfc_ir_block_t* ir
 
             case IR_SET: err = asm_prog->backend->emit_op_set(asm_prog, instr->val.imm); break;
 
-            case IR_LOOP:
-                err = bfc_codegen_emit_loop(asm_prog, (const bfc_ir_block_t*) instr->val.body);
-                break;
+            case IR_LOOP: err = bfc_codegen_emit_loop(asm_prog, instr->val.body); break;
 
             default: return bfc_make_error(ERR_INTERNAL, "Unknown IR instruction");
         }
@@ -110,6 +150,26 @@ bfc_error_t bfc_codegen_emit_block(bfc_asm_t* asm_prog, const bfc_ir_block_t* ir
     }
 
     return BFC_ERR_OK;
+}
+
+[[gnu::nonnull(1, 2), gnu::format(printf, 2, 3)]]
+bfc_error_t bfc_codegen_emitf(bfc_asm_t* asm_prog, const char* format, ...)
+{
+    char buffer[256];
+
+    va_list args;
+    va_start(args, format);
+
+    const int length = vsnprintf(buffer, sizeof(buffer), format, args);
+
+    va_end(args);
+
+    if (length < 0 || (size_t) length >= sizeof(buffer))
+    {
+        return bfc_make_error(ERR_INTERNAL, "Formatted assembly text is too long");
+    }
+
+    return bfc_codegen_emit_text(asm_prog, buffer);
 }
 
 bfc_error_t bfc_codegen(bfc_asm_t** out_asm, const bfc_ir_block_t* ir_block)
@@ -185,21 +245,6 @@ void bfc_asm_destroy(bfc_asm_t** pasm_prog)
     free(*pasm_prog);
 
     *pasm_prog = nullptr;
-}
-
-const bfc_backend_t* bfc_backend_select(void)
-{
-#if defined(__x86_64__) || defined(_M_X64)
-    return &BFC_BACKEND_X86_64;
-#elif defined(__i386__) || defined(_M_IX86)
-    return &BFC_BACKEND_I386;
-#elif defined(__aarch64__) || defined(_M_ARM64)
-    return &BFC_BACKEND_AARCH64;
-#elif defined(__arm__) || defined(_M_ARM)
-    return &BFC_BACKEND_ARM32;
-#else
-    return nullptr;
-#endif
 }
 
 bfc_error_t bfc_asm_write_file(const bfc_asm_t* asm_prog, const char* path)

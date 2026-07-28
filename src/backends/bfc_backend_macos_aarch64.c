@@ -1,35 +1,15 @@
 #include "bfc_codegen_internal.h"
 
-#include <stdarg.h>
+#include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 
 static const size_t BFC_TAPE_SIZE = 30000;
-
-[[gnu::nonnull(1, 2), gnu::format(printf, 2, 3)]]
-static bfc_error_t emitf(bfc_asm_t* asm_prog, const char* format, ...)
-{
-    char buffer[256];
-
-    va_list args;
-    va_start(args, format);
-
-    const int length = vsnprintf(buffer, sizeof(buffer), format, args);
-
-    va_end(args);
-
-    if (length < 0 || (size_t) length >= sizeof(buffer))
-    {
-        return bfc_make_error(ERR_INTERNAL, "AArch64 assembly line is too long");
-    }
-
-    return bfc_codegen_emit_text(asm_prog, buffer);
-}
 
 [[gnu::nonnull(1)]]
 static bfc_error_t emit_load_u64(bfc_asm_t* asm_prog, uint64_t value)
 {
-    bfc_error_t err = emitf(asm_prog, "    movz x16, #%u\n", (unsigned) (value & UINT64_C(0xffff)));
+    bfc_error_t err
+        = bfc_codegen_emitf(asm_prog, "    movz x16, #%u\n", (unsigned) (value & UINT64_C(0xffff)));
 
     if (err.code != ERR_OK)
     {
@@ -45,7 +25,9 @@ static bfc_error_t emit_load_u64(bfc_asm_t* asm_prog, uint64_t value)
             continue;
         }
 
-        err = emitf(asm_prog, "    movk x16, #%u, lsl #%u\n", (unsigned) part, (unsigned) shift);
+        err = bfc_codegen_emitf(
+            asm_prog, "    movk x16, #%u, lsl #%u\n", (unsigned) part, (unsigned) shift
+        );
 
         if (err.code != ERR_OK)
         {
@@ -68,7 +50,7 @@ static bfc_error_t emit_header(bfc_asm_t* asm_prog)
 [[gnu::nonnull(1)]]
 static bfc_error_t emit_data_section(bfc_asm_t* asm_prog)
 {
-    return emitf(
+    return bfc_codegen_emitf(
         asm_prog,
         ".section __DATA,__bss\n"
         ".p2align 4\n"
@@ -121,7 +103,7 @@ static bfc_error_t emit_op_add(bfc_asm_t* asm_prog, int64_t imm)
         return BFC_ERR_OK;
     }
 
-    return emitf(
+    return bfc_codegen_emitf(
         asm_prog,
         "    ldrb w16, [x19]\n"
         "    add  w16, w16, #%u\n"
@@ -185,7 +167,7 @@ static bfc_error_t emit_op_set(bfc_asm_t* asm_prog, int64_t imm)
         return bfc_codegen_emit_text(asm_prog, "    strb wzr, [x19]\n");
     }
 
-    return emitf(
+    return bfc_codegen_emitf(
         asm_prog,
         "    mov  w16, #%u\n"
         "    strb w16, [x19]\n",
@@ -196,7 +178,7 @@ static bfc_error_t emit_op_set(bfc_asm_t* asm_prog, int64_t imm)
 [[gnu::nonnull(1, 2)]]
 static bfc_error_t emit_loop_test_z(bfc_asm_t* asm_prog, const char* label)
 {
-    return emitf(
+    return bfc_codegen_emitf(
         asm_prog,
         "    ldrb w16, [x19]\n"
         "    cbz  w16, %s\n",
@@ -207,7 +189,7 @@ static bfc_error_t emit_loop_test_z(bfc_asm_t* asm_prog, const char* label)
 [[gnu::nonnull(1, 2)]]
 static bfc_error_t emit_loop_test_nz(bfc_asm_t* asm_prog, const char* label)
 {
-    return emitf(
+    return bfc_codegen_emitf(
         asm_prog,
         "    ldrb w16, [x19]\n"
         "    cbnz w16, %s\n",
@@ -215,7 +197,7 @@ static bfc_error_t emit_loop_test_nz(bfc_asm_t* asm_prog, const char* label)
     );
 }
 
-const bfc_backend_t BFC_BACKEND_AARCH64 = {
+const bfc_backend_t BFC_BACKEND_MACOS_AARCH64 = {
     .arch = BFC_ARCH_AARCH64,
     .os   = BFC_OS_MACOS,
 

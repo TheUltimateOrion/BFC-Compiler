@@ -6,15 +6,20 @@
 #include "bfc_jumptable.h"
 #include "bfc_lexer.h"
 
+#include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
-#define CHECK_ERROR(err)                                     \
-    if (err.code != ERR_OK)                                  \
-    {                                                        \
-        bfc_log_error(err, (struct bfc_program_t*) program); \
-        goto end;                                            \
-    }
+#define CHECK_ERROR(error_)                 \
+    do                                      \
+    {                                       \
+        if ((error_).code != ERR_OK)        \
+        {                                   \
+            bfc_log_error(error_, program); \
+            goto end;                       \
+        }                                   \
+    }                                       \
+    while (0)
 
 int main(int argc, char** argv)
 {
@@ -45,6 +50,7 @@ int main(int argc, char** argv)
     if (cmd_args.ask_help)
     {
         bfc_cmd_help();
+        ret = EXIT_SUCCESS;
         goto end;
     }
 
@@ -68,9 +74,20 @@ int main(int argc, char** argv)
 
     if (cmd_args.do_assemble)
     {
-        err = bfc_asm_write_file(
-            asm_prog, cmd_args.output ? cmd_args.output : strcat((char*) cmd_args.input, ".s")
+        char output_path[4096];
+
+        const int length = snprintf(
+            output_path, sizeof(output_path), cmd_args.output ? "%s" : "%s.s",
+            cmd_args.output ? cmd_args.output : cmd_args.input
         );
+
+        if (length < 0 || (size_t) length >= sizeof(output_path))
+        {
+            err = bfc_make_error(ERR_ARGS, "Output path is too long");
+            CHECK_ERROR(err);
+        }
+
+        err = bfc_asm_write_file(asm_prog, output_path);
         CHECK_ERROR(err);
     }
 

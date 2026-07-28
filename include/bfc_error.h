@@ -7,8 +7,6 @@
 #define COL_INFO "\033[1;1m"
 #define COL_ERROR "\033[1;31m"
 
-struct bfc_program_t;
-
 #define ERROR_LIST            \
     X(ERR_OK)                 \
     X(ERR_ARGS)               \
@@ -37,6 +35,8 @@ typedef struct [[nodiscard("bfc_error_t result must be checked")]]
 #define BFC_ERR_ALLOC                                                                      \
     ((bfc_error_t) {.code = ERR_ALLOC, .msg = "Memory allocation failure!", .token = {0}})
 
+struct bfc_program_t;
+
 bfc_error_t bfc_make_error(bfc_err_code_t const error_code, char const* msg);
 
 bfc_error_t bfc_make_error_with_token(
@@ -49,6 +49,6 @@ bfc_error_t bfc_make_error_with_token(
 char const* bfc_get_error_code(bfc_err_code_t const error_code);
 
 [[gnu::cold]]
-void bfc_log_error(bfc_error_t const err, const struct bfc_program_t* const program);
+void bfc_log_error(bfc_error_t err, const struct bfc_program_t* program);
 
 #endif  // BFC_ERROR_H

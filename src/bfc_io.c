@@ -1,6 +1,6 @@
 #include "bfc_io.h"
 
-#include <limits.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -46,7 +46,7 @@ bfc_error_t bfc_program_create(bfc_program_t** program, char const* file_path)
             return bfc_make_error(ERR_IO, "Unable to seek the start of file!");
         }
 
-        if (file_size < 0 || file_size > (LONG_MAX - 1))
+        if (file_size < 0 || (uintmax_t) file_size > (uintmax_t) (SIZE_MAX - 1))
         {
             free(prog);
             fclose(file_handle);
@@ -54,7 +54,9 @@ bfc_error_t bfc_program_create(bfc_program_t** program, char const* file_path)
             return bfc_make_error(ERR_IO, "Invalid file size!");
         }
 
-        prog->buffer = malloc((file_size + 1) * sizeof(*prog->buffer));
+        const size_t file_size_bytes = (size_t) file_size;
+
+        prog->buffer = malloc(file_size_bytes + 1);
         if (!prog->buffer)
         {
             free(prog);
@@ -63,7 +65,7 @@ bfc_error_t bfc_program_create(bfc_program_t** program, char const* file_path)
             return BFC_ERR_ALLOC;
         }
 
-        prog->file_size = file_size;
+        prog->file_size = file_size_bytes;
 
         prog->path = malloc(strlen(file_path) + 1);
         if (!prog->path)
@@ -96,14 +98,18 @@ bfc_error_t bfc_program_create(bfc_program_t** program, char const* file_path)
         fclose(file_handle);
 
         prog->line_count = 0;
-        size_t i         = 0;
-        while (prog->buffer[i] != '\0')
+
+        for (size_t i = 0; i < prog->file_size; ++i)
         {
             if (prog->buffer[i] == '\n')
             {
                 ++prog->line_count;
             }
-            ++i;
+        }
+
+        if (prog->file_size > 0 && prog->buffer[prog->file_size - 1] != '\n')
+        {
+            ++prog->line_count;
         }
 
         *program = prog;
@@ -146,7 +152,7 @@ char const* bfc_program_getname(bfc_program_t const* program)
 
 char* bfc_program_getline(bfc_program_t const* const program, size_t const n)
 {
-    if (n > program->line_count)
+    if (n == 0 || n > program->line_count)
     {
         return nullptr;
     }
@@ -169,24 +175,16 @@ char* bfc_program_getline(bfc_program_t const* const program, size_t const n)
 
     end = strchr(start, '\n');
 
-    size_t line_len;
-    if (end == nullptr)
-    {
-        line_len = strlen(start);
-    }
-    else
-    {
-        line_len = end - start;
-    }
+    const size_t line_len = end ? (size_t) (end - start) : strlen(start);
 
-    if (line_len > 4096)
+    char* line_buf = malloc(line_len + 1);
+
+    if (!line_buf)
     {
         return nullptr;
     }
 
-    char* line_buf = malloc(4096 * sizeof(*line_buf));
-
-    strncpy(line_buf, start, line_len);
+    memcpy(line_buf, start, line_len);
     line_buf[line_len] = '\0';
 
     return line_buf;

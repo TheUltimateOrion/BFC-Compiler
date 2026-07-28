@@ -1,12 +1,10 @@
 #ifndef BFC_LEXER_H
 #define BFC_LEXER_H
 
-#include <stddef.h>
-#include <stdint.h>
-
 #include "bfc_cli.h"
 #include "bfc_error.h"
 #include "bfc_io.h"
+#include "bfc_token.h"
 
 [[gnu::nonnull(1, 2)]]
 bfc_error_t bfc_lex(

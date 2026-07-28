@@ -5,7 +5,7 @@
 
 #include "bfc_error.h"
 
-typedef struct
+typedef struct bfc_program_t
 {
     char*  path;
     char*  buffer;
