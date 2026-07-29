@@ -1,5 +1,6 @@
 #include "bfc_jumptable.h"
 
+#include <inttypes.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -73,7 +74,7 @@ bfc_error_t bfc_parse_jump_table(int64_t** jump_table, bfc_token_stream_t const*
     return BFC_ERR_OK;
 
 extra_closing_bracket:
-    snprintf(err_str, sizeof(err_str), "Found an extra ']' at line %u.", toks[i].line);
+    snprintf(err_str, sizeof(err_str), "Found an extra ']' at line %" PRIu32 ".", toks[i].line);
 
     err = bfc_make_error_with_token(ERR_MISMATCHED_BRACKET, err_str, toks[i]);
 
@@ -85,7 +86,7 @@ extra_closing_bracket:
 missing_closing_bracket:
     snprintf(
         err_str, sizeof(err_str),
-        "Missing a closing bracket ']' for opening bracket '[' at line %u.",
+        "Missing a closing bracket ']' for opening bracket '[' at line %" PRIu32 ".",
         toks[stack[sp - 1]].line
     );
 
