@@ -40,11 +40,11 @@ The CLI is intended to feel familiar if you have used clang or gcc:
 
 - [ ] Code generation:
 
-  - [ ] Assembly generation from Brainfuck instructions
+  - [x] Assembly generation from Brainfuck instructions
 
   - [ ] Assemble + link pipeline (produce executable)
 
-  - [ ] Target selection (x86_64, arm64)
+  - [x] Target selection (x86_64, arm64)
 
 - [ ] Optimizations (Brainfuck-specific):
 
