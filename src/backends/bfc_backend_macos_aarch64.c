@@ -92,10 +92,6 @@ static bfc_error_t emit_end(bfc_asm_t* asm_prog)
 [[gnu::nonnull(1)]]
 static bfc_error_t emit_op_add(bfc_asm_t* asm_prog, int64_t imm)
 {
-    /*
-     * Brainfuck cells are bytes. Normalizing to uint8_t gives
-     * the required wrapping behaviour for positive and negative values.
-     */
     const uint8_t normalized = (uint8_t) imm;
 
     if (normalized == 0)

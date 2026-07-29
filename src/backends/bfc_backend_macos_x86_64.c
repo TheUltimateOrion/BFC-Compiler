@@ -1,5 +1,6 @@
 #include "bfc_codegen_internal.h"
 
+#include <inttypes.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -8,42 +9,16 @@ static const size_t BFC_TAPE_SIZE = 30000;
 [[gnu::nonnull(1)]]
 static bfc_error_t emit_load_u64(bfc_asm_t* asm_prog, uint64_t value)
 {
-    bfc_error_t err
-        = bfc_codegen_emitf(asm_prog, "    movz x16, #%u\n", (unsigned) (value & UINT64_C(0xffff)));
-
-    if (err.code != ERR_OK)
-    {
-        return err;
-    }
-
-    for (uint16_t shift = 16; shift < 64; shift += 16)
-    {
-        const uint16_t part = (uint16_t) ((value >> shift) & UINT64_C(0xffff));
-
-        if (part == 0)
-        {
-            continue;
-        }
-
-        err = bfc_codegen_emitf(
-            asm_prog, "    movk x16, #%u, lsl #%u\n", (unsigned) part, (unsigned) shift
-        );
-
-        if (err.code != ERR_OK)
-        {
-            return err;
-        }
-    }
-
-    return BFC_ERR_OK;
+    return bfc_codegen_emitf(asm_prog, "    movabs r11, 0x%016" PRIx64 "\n", value);
 }
 
 [[gnu::nonnull(1)]]
 static bfc_error_t emit_header(bfc_asm_t* asm_prog)
 {
     return bfc_codegen_emit_text(
-        asm_prog, ".text\n"
-                  ".p2align 2\n"
+        asm_prog, ".intel_syntax noprefix\n"
+                  ".text\n"
+                  ".p2align 4\n"
     );
 }
 
@@ -66,14 +41,14 @@ static bfc_error_t emit_symbol(bfc_asm_t* asm_prog)
     return bfc_codegen_emit_text(
         asm_prog, ".text\n"
                   ".globl _main\n"
-                  ".p2align 2\n"
+                  ".p2align 4\n"
                   "_main:\n"
-                  "    stp x29, x30, [sp, #-32]!\n"
-                  "    str x19, [sp, #16]\n"
-                  "    mov x29, sp\n"
+                  "    push rbp\n"
+                  "    mov  rbp, rsp\n"
+                  "    push rbx\n"
+                  "    sub  rsp, 8\n"
                   "\n"
-                  "    adrp x19, _bfc_tape@PAGE\n"
-                  "    add  x19, x19, _bfc_tape@PAGEOFF\n"
+                  "    lea  rbx, [rip + _bfc_tape]\n"
     );
 }
 
@@ -82,9 +57,10 @@ static bfc_error_t emit_end(bfc_asm_t* asm_prog)
 {
     return bfc_codegen_emit_text(
         asm_prog, "\n"
-                  "    mov w0, #0\n"
-                  "    ldr x19, [sp, #16]\n"
-                  "    ldp x29, x30, [sp], #32\n"
+                  "    xor  eax, eax\n"
+                  "    add  rsp, 8\n"
+                  "    pop  rbx\n"
+                  "    pop  rbp\n"
                   "    ret\n"
     );
 }
@@ -92,10 +68,6 @@ static bfc_error_t emit_end(bfc_asm_t* asm_prog)
 [[gnu::nonnull(1)]]
 static bfc_error_t emit_op_add(bfc_asm_t* asm_prog, int64_t imm)
 {
-    /*
-     * Brainfuck cells are bytes. Normalizing to uint8_t gives
-     * the required wrapping behaviour for positive and negative values.
-     */
     const uint8_t normalized = (uint8_t) imm;
 
     if (normalized == 0)
@@ -103,13 +75,7 @@ static bfc_error_t emit_op_add(bfc_asm_t* asm_prog, int64_t imm)
         return BFC_ERR_OK;
     }
 
-    return bfc_codegen_emitf(
-        asm_prog,
-        "    ldrb w16, [x19]\n"
-        "    add  w16, w16, #%u\n"
-        "    strb w16, [x19]\n",
-        (unsigned) normalized
-    );
+    return bfc_codegen_emitf(asm_prog, "    add byte ptr [rbx], %u\n", (unsigned) normalized);
 }
 
 [[gnu::nonnull(1)]]
@@ -129,22 +95,18 @@ static bfc_error_t emit_op_move(bfc_asm_t* asm_prog, int64_t imm)
         return err;
     }
 
-    if (imm < 0)
-    {
-        return bfc_codegen_emit_text(asm_prog, "    sub x19, x19, x16\n");
-    }
-
-    return bfc_codegen_emit_text(asm_prog, "    add x19, x19, x16\n");
+    return bfc_codegen_emit_text(asm_prog, imm < 0 ? "    sub rbx, r11\n" : "    add rbx, r11\n");
 }
 
 [[gnu::nonnull(1)]]
 static bfc_error_t emit_op_get(bfc_asm_t* asm_prog)
 {
     return bfc_codegen_emit_text(
-        asm_prog, "    bl   _getchar\n"
-                  "    cmn  w0, #1\n"
-                  "    csel w0, wzr, w0, eq\n"
-                  "    strb w0, [x19]\n"
+        asm_prog, "    call _getchar\n"
+                  "    xor  edx, edx\n"
+                  "    cmp  eax, -1\n"
+                  "    cmove eax, edx\n"
+                  "    mov  byte ptr [rbx], al\n"
     );
 }
 
@@ -152,8 +114,8 @@ static bfc_error_t emit_op_get(bfc_asm_t* asm_prog)
 static bfc_error_t emit_op_put(bfc_asm_t* asm_prog)
 {
     return bfc_codegen_emit_text(
-        asm_prog, "    ldrb w0, [x19]\n"
-                  "    bl   _putchar\n"
+        asm_prog, "    movzx edi, byte ptr [rbx]\n"
+                  "    call  _putchar\n"
     );
 }
 
@@ -162,17 +124,7 @@ static bfc_error_t emit_op_set(bfc_asm_t* asm_prog, int64_t imm)
 {
     const uint8_t normalized = (uint8_t) imm;
 
-    if (normalized == 0)
-    {
-        return bfc_codegen_emit_text(asm_prog, "    strb wzr, [x19]\n");
-    }
-
-    return bfc_codegen_emitf(
-        asm_prog,
-        "    mov  w16, #%u\n"
-        "    strb w16, [x19]\n",
-        (unsigned) normalized
-    );
+    return bfc_codegen_emitf(asm_prog, "    mov byte ptr [rbx], %u\n", (unsigned) normalized);
 }
 
 [[gnu::nonnull(1, 2)]]
@@ -180,8 +132,8 @@ static bfc_error_t emit_loop_test_z(bfc_asm_t* asm_prog, const char* label)
 {
     return bfc_codegen_emitf(
         asm_prog,
-        "    ldrb w16, [x19]\n"
-        "    cbz  w16, %s\n",
+        "    cmp byte ptr [rbx], 0\n"
+        "    je  %s\n",
         label
     );
 }
@@ -191,14 +143,17 @@ static bfc_error_t emit_loop_test_nz(bfc_asm_t* asm_prog, const char* label)
 {
     return bfc_codegen_emitf(
         asm_prog,
-        "    ldrb w16, [x19]\n"
-        "    cbnz w16, %s\n",
+        "    cmp byte ptr [rbx], 0\n"
+        "    jne %s\n",
         label
     );
 }
 
 const bfc_backend_t BFC_BACKEND_MACOS_X86_64 = {
-    .target = {.arch = BFC_ARCH_X86_64, .os = BFC_OS_MACOS},
+    .target = {
+        .arch = BFC_ARCH_X86_64,
+        .os   = BFC_OS_MACOS,
+    },
 
     .emit_header       = emit_header,
     .emit_data_section = emit_data_section,
