@@ -1,47 +1,60 @@
-CC        := clang
-TARGET    := bfc
-SRC_DIR   := src
-OBJ_DIR   := obj
-CSTD	  := c23
+CC          := clang
+SRC_DIR     := src
+INCLUDE_DIR := include
+BUILD_ROOT  := build
+CSTD        := c23
 
-# 1. Set the default configuration to 'debug' if not specified
-CONFIG    ?= debug
+CONFIG ?= debug
 
-# 2. Define flags and paths based on the chosen configuration
-BASE_CFLAGS := -Wall -Wextra -pedantic -Wuninitialized -Iinclude -std=$(CSTD)
+COMMON_CFLAGS := \
+	-std=$(CSTD) \
+	-I$(INCLUDE_DIR) \
+	-Wall \
+	-Wextra \
+	-Wpedantic \
+	-Wuninitialized
 
 ifeq ($(CONFIG),release)
-    CFLAGS    := $(BASE_CFLAGS) -O3 -DNDEBUG
-    BUILD_DIR := $(OBJ_DIR)/release
+	CFLAGS  := $(COMMON_CFLAGS) -O3 -DNDEBUG
+	LDFLAGS :=
+else ifeq ($(CONFIG),debug)
+	CFLAGS  := $(COMMON_CFLAGS) \
+		-Wconditional-uninitialized \
+		-g \
+		-O0 \
+		-fsanitize=address \
+		-fno-omit-frame-pointer
+
+	LDFLAGS := \
+		-fsanitize=address
 else
-    CFLAGS    := $(BASE_CFLAGS) -Wconditional-uninitialized -g -O0 -fsanitize=address -fno-omit-frame-pointer
-    BUILD_DIR := $(OBJ_DIR)/debug
+	$(error Unknown CONFIG '$(CONFIG)'; expected debug or release)
 endif
 
-# 3. Source and Object file resolution (Always evaluates correctly)
-SRCS      := $(shell find $(SRC_DIR) -name '*.c')
-OBJS      := $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.o, $(SRCS))
+CONFIG_DIR := $(BUILD_ROOT)/$(CONFIG)
+OBJ_DIR    := $(CONFIG_DIR)/obj
+TARGET     := $(CONFIG_DIR)/bfc
 
-# 4. Standard Targets
+SRCS := $(shell find $(SRC_DIR) -name '*.c')
+OBJS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRCS))
+
 .PHONY: all clean debug release
 
 all: $(TARGET)
 
-# Shortcut targets that call make again with the explicit config
 debug:
-	@$(MAKE) CONFIG=debug all
+	$(MAKE) CONFIG=debug all
 
 release:
-	@$(MAKE) CONFIG=release all
+	$(MAKE) CONFIG=release all
 
-# 5. Core Build Rules
 $(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) $^ -o $@
+	@mkdir -p $(dir $@)
+	$(CC) $(LDFLAGS) $^ -o $@
 
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-
 clean:
-	rm -rf $(OBJ_DIR) $(TARGET)
+	rm -rf $(BUILD_ROOT)
