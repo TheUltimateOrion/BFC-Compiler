@@ -1,6 +1,7 @@
 #include "bfc_codegen_internal.h"
 
 #include <stdarg.h>
+#include <stdckdint.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -133,7 +134,12 @@ static bfc_error_t bfc_codegen_emit_loop(bfc_asm_t* asm_prog, const bfc_ir_block
 bfc_error_t bfc_codegen_emit_text(bfc_asm_t* asm_prog, const char* text)
 {
     const size_t text_length = strlen(text);
-    const size_t required    = asm_prog->length + text_length + 1;
+    size_t       required;
+
+    if (ckd_add(&required, asm_prog->length, text_length) || ckd_add(&required, required, 1))
+    {
+        return bfc_make_error(ERR_ALLOC, "Assembly buffer size overflow");
+    }
 
     if (required > asm_prog->capacity)
     {
@@ -141,7 +147,14 @@ bfc_error_t bfc_codegen_emit_text(bfc_asm_t* asm_prog, const char* text)
 
         while (new_capacity < required)
         {
-            new_capacity *= 2;
+            size_t doubled_capacity;
+
+            if (ckd_mul(&doubled_capacity, new_capacity, 2))
+            {
+                return bfc_make_error(ERR_ALLOC, "Assembly buffer capacity overflow");
+            }
+
+            new_capacity = doubled_capacity;
         }
 
         char* new_buffer = realloc(asm_prog->buffer, new_capacity);

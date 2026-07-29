@@ -1,5 +1,7 @@
 #include "bfc_ir.h"
+#include "bfc_error.h"
 
+#include <stdckdint.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -57,9 +59,21 @@ bfc_error_t bfc_ir_create(bfc_ir_block_t** root_block, bfc_token_stream_t const*
     {
         if (stack.length >= stack.capacity)
         {
-            size_t new_capacity = stack.capacity * 2;
+            size_t new_capacity;
 
-            bfc_ir_block_t** tmp = realloc(stack.blocks, new_capacity * sizeof(*stack.blocks));
+            if (ckd_mul(&new_capacity, stack.capacity, 2))
+            {
+                goto end;
+            }
+
+            size_t allocation_size;
+
+            if (ckd_mul(&allocation_size, new_capacity, sizeof(*stack.blocks)))
+            {
+                goto end;
+            }
+
+            bfc_ir_block_t** tmp = realloc(stack.blocks, allocation_size);
 
             if (!tmp)
             {
@@ -72,10 +86,21 @@ bfc_error_t bfc_ir_create(bfc_ir_block_t** root_block, bfc_token_stream_t const*
 
         if (current_block->length >= current_block->capacity)
         {
-            size_t new_capacity = current_block->capacity * 2;
+            size_t new_capacity;
 
-            bfc_ir_instr_t* tmp
-                = realloc(current_block->instr, new_capacity * sizeof(*current_block->instr));
+            if (ckd_mul(&new_capacity, current_block->capacity, 2))
+            {
+                goto end;
+            }
+
+            size_t allocation_size;
+
+            if (ckd_mul(&allocation_size, new_capacity, sizeof(*current_block->instr)))
+            {
+                goto end;
+            }
+
+            bfc_ir_instr_t* tmp = realloc(current_block->instr, allocation_size);
 
             if (!tmp)
             {
@@ -228,16 +253,33 @@ bfc_error_t bfc_ir_optimize_rep(bfc_ir_block_t** ir_block)
         {
             if ((*ir_block)->instr[i].op == IR_LOOP)
             {
-                err = bfc_ir_optimize_rep(&(*ir_block)->instr[i].val.body);
+                bfc_ir_instr_t* loop = &(*ir_block)->instr[i];
+
+                err = bfc_ir_optimize_rep(&loop->val.body);
 
                 if (err.code != ERR_OK)
                 {
                     goto end;
                 }
+
+                const bfc_ir_block_t* body = loop->val.body;
+
+                if (body->length == 1 && body->instr[0].op == IR_ADD
+                    && (body->instr[0].val.imm == 1 || body->instr[0].val.imm == -1))
+                {
+                    bfc_ir_destroy(&loop->val.body);
+
+                    optimized_block->instr[optimized_block->length++]
+                        = bfc_ir_make_imm_instr(IR_SET, 0);
+
+                    ++i;
+                    continue;
+                }
             }
 
             optimized_block->instr[optimized_block->length++] = (*ir_block)->instr[i];
-            prev_instr                                        = (*ir_block)->instr[i++];
+
+            prev_instr = (*ir_block)->instr[i++];
         }
     }
 

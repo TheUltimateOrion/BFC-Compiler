@@ -1,9 +1,10 @@
 #include "bfc_codegen_internal.h"
 
+#include <inttypes.h>
 #include <stddef.h>
 #include <stdint.h>
 
-static const size_t BFC_TAPE_SIZE = 30000;
+static constexpr size_t BFC_TAPE_SIZE = 30000;
 
 [[gnu::nonnull(1)]]
 static bfc_error_t emit_load_u64(bfc_asm_t* asm_prog, uint64_t value)
@@ -117,6 +118,15 @@ static bfc_error_t emit_op_move(bfc_asm_t* asm_prog, int64_t imm)
     }
 
     const uint64_t magnitude = imm < 0 ? UINT64_C(0) - (uint64_t) imm : (uint64_t) imm;
+
+    if (magnitude <= 4095)
+    {
+        return bfc_codegen_emitf(
+            asm_prog,
+            imm < 0 ? "    sub x19, x19, #%" PRIu64 "\n" : "    add x19, x19, #%" PRIu64 "\n",
+            magnitude
+        );
+    }
 
     bfc_error_t err = emit_load_u64(asm_prog, magnitude);
 

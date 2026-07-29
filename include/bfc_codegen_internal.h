@@ -1,11 +1,14 @@
 #ifndef BFC_CODEGEN_INTERNAL_H
 #define BFC_CODEGEN_INTERNAL_H
 
+#include <limits.h>
 #include <stddef.h>
 #include <stdint.h>
 
 #include "bfc_codegen.h"
 #include "bfc_target.h"
+
+static_assert(CHAR_BIT == 8, "bfc requires 8-bit bytes");
 
 typedef struct
 {

@@ -461,7 +461,8 @@ bfc_error_t bfc_program_create(bfc_program_t** program, char const* file_path)
 
         prog->file_size = file_size_bytes;
 
-        prog->path = malloc(strlen(file_path) + 1);
+        prog->path = strdup(file_path);
+
         if (!prog->path)
         {
             free(prog->buffer);
@@ -470,8 +471,6 @@ bfc_error_t bfc_program_create(bfc_program_t** program, char const* file_path)
 
             return BFC_ERR_ALLOC;
         }
-
-        strcpy(prog->path, file_path);
 
         size_t end = fread(prog->buffer, sizeof(char), prog->file_size, file_handle);
         if (ferror(file_handle) != 0 || end != (size_t) prog->file_size)
@@ -1402,7 +1401,7 @@ bfc_target_t bfc_target_host(void)
  * Generic code generation
  * ========================================================================= */
 
-static const bfc_target_entry_t BFC_TARGETS[] = {
+static constexpr bfc_target_entry_t BFC_TARGETS[] = {
     {
         .name = "aarch64-apple-darwin",
         .target = {
