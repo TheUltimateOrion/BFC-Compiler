@@ -1,5 +1,6 @@
 #include "bfc_error.h"
 
+#include <inttypes.h>
 #include <math.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -61,7 +62,9 @@ void bfc_log_error(bfc_error_t const err, const struct bfc_program_t* const prog
     if (err.code == ERR_MISSING_BRACKET || err.code == ERR_MISMATCHED_BRACKET)
     {
         fprintf(
-            stderr, COL_INFO "%s[%u, %u]: " COL_ERROR "%s" COL_OFF COL_INFO ": %s\n" COL_OFF,
+            stderr,
+            COL_INFO "%s[%" PRIu32 ", %" PRIu32 "]: " COL_ERROR "%s" COL_OFF COL_INFO
+                     ": %s\n" COL_OFF,
             bfc_program_getname(program), err.token.line, err.token.col,
             bfc_get_error_code(err.code), err.msg
         );
