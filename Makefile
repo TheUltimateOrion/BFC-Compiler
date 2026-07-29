@@ -1,4 +1,4 @@
-CC          := clang
+CC          := cc
 SRC_DIR     := src
 INCLUDE_DIR := include
 BUILD_ROOT  := build

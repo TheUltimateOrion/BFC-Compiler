@@ -1,5 +1,6 @@
 -Wall
 -Wextra
--pedantic
+-Wpedantic
+-Wuninitialized
 -Iinclude
 -std=c23
