@@ -1,27 +1,31 @@
-/*
- * Target-triple parsing and host-target detection.
+/**
+ * @file bfc_target.c
+ * @brief Target-triple parsing and host detection.
  *
- * The target table describes recognized triples. Backend availability is
- * checked separately by code generation, so a recognized triple may still be
- * rejected when its backend is not linked into bfc.
+ * @details
+ * Maps accepted target strings to internal targets and derives the native target from compiler predefined macros.
  */
-
 #include "bfc_target.h"
 
 #include <string.h>
 
 #include "bfc_common.h"
 
-/* One exact command-line triple mapped to bfc's compact target identity. */
+/**
+ * @brief One accepted target-triple mapping.
+ *
+ * @internal
+ */
 typedef struct
 {
     const char*  name;
     bfc_target_t target;
 } bfc_target_entry_t;
 
-/*
- * Keep aliases or additional triples here. Adding an entry only makes parsing
- * succeed; a matching backend must also be registered in bfc_codegen.c.
+/**
+ * @brief Target triples recognized by the command-line interface.
+ *
+ * @internal
  */
 static const bfc_target_entry_t BFC_TARGETS[] = {
     {
@@ -74,8 +78,10 @@ static const bfc_target_entry_t BFC_TARGETS[] = {
         },
     },
 };
+/**
+ * @brief Looks up a supported textual target triple.
+ */
 
-/* Parse by exact string match to avoid ambiguous partial target names. */
 bfc_error_t bfc_target_parse(bfc_target_t* target, const char* triple)
 {
     for (size_t i = 0; i < BFC_ARRAY_LENGTH(BFC_TARGETS); ++i)
@@ -89,12 +95,10 @@ bfc_error_t bfc_target_parse(bfc_target_t* target, const char* triple)
 
     return bfc_make_error(ERR_ARGS, "Unknown or unsupported target triple");
 }
-
-/*
- * Host detection supplies the default target when --target is omitted.
- * Predefined compiler macros describe the machine running bfc, not an
- * arbitrary cross-compilation target.
+/**
+ * @brief Derives the native target from compiler predefined macros.
  */
+
 bfc_target_t bfc_target_host(void)
 {
 #if defined(__aarch64__) || defined(_M_ARM64)

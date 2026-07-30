@@ -1,40 +1,62 @@
+/**
+ * @file bfc_memory.h
+ * @brief Checked array-allocation helpers.
+ *
+ * @details
+ * Provides overflow-checked allocation functions for typed arrays and convenience macros that infer element size from pointer type.
+ */
 #ifndef BFC_MEMORY_H
 #define BFC_MEMORY_H
 
 #include <stddef.h>
 
-/*
- * Allocate an array of count elements, each element_size bytes wide.
+/**
+ * @brief Allocates an uninitialized array after checking count multiplication.
  *
- * The multiplication is checked before allocation. A null pointer is returned
- * when the byte count overflows or the allocation fails.
+ * @param[in] count Number of elements.
+ * @param[in] element_size Size of each element in bytes.
+ *
+ * @return A newly allocated block, or `nullptr` on overflow or allocation failure.
+ *
+ * @note The returned allocation must be released with `free()`.
  */
 [[gnu::malloc, gnu::alloc_size(1, 2)]]
 void* bfc_malloc_array(size_t count, size_t element_size);
 
-/*
- * Allocate and zero-initialize an array using checked size multiplication.
- * Returns null on arithmetic overflow or allocation failure.
+/**
+ * @brief Allocates a zero-initialized array after checking count multiplication.
+ *
+ * @param[in] count Number of elements.
+ * @param[in] element_size Size of each element in bytes.
+ *
+ * @return A zero-initialized block, or `nullptr` on overflow or allocation failure.
+ *
+ * @note The returned allocation must be released with `free()`.
  */
 [[gnu::malloc, gnu::alloc_size(1, 2)]]
 void* bfc_calloc_array(size_t count, size_t element_size);
 
-/*
- * Resize an existing array using checked size multiplication.
+/**
+ * @brief Resizes a typed array after checking count multiplication.
  *
- * On failure, the original allocation remains valid and must still be freed by
- * the caller. Passing a null allocation has the same effect as malloc.
+ * @param[in,out] allocation Existing allocation, or `nullptr`.
+ * @param[in] count Requested number of elements.
+ * @param[in] element_size Size of each element in bytes.
+ *
+ * @return The resized block, or `nullptr` on overflow or allocation failure.
+ *
+ * @note On failure, the original allocation remains valid.
  */
 [[gnu::alloc_size(2, 3)]]
 void* bfc_realloc_array(void* allocation, size_t count, size_t element_size);
 
-/*
- * Typed convenience wrappers. The pointer expression supplies only the element
- * type for malloc/calloc and is not evaluated there. The realloc form evaluates
- * the pointer once as the allocation argument.
+/**
+ * @brief Allocates an array and infers the element size from the pointer expression.
  */
 #define BFC_MALLOC_ARRAY(pointer, count) bfc_malloc_array((count), sizeof(*(pointer)))
+
 #define BFC_CALLOC_ARRAY(pointer, count) bfc_calloc_array((count), sizeof(*(pointer)))
+
 #define BFC_REALLOC_ARRAY(pointer, count) bfc_realloc_array((pointer), (count), sizeof(*(pointer)))
 
-#endif  // BFC_MEMORY_H
+#endif

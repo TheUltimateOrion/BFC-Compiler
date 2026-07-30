@@ -1,11 +1,17 @@
+/**
+ * @file bfc_common.h
+ * @brief Common compile-time utility macros.
+ *
+ * @details
+ * Contains small utilities shared across otherwise independent compiler modules.
+ */
 #ifndef BFC_COMMON_H
 #define BFC_COMMON_H
 
-/*
- * Returns the number of elements in an actual array.
+/**
+ * @brief Returns the number of elements in an actual array.
  *
- * This macro must not be used with a pointer because sizeof(pointer) does not
- * describe the size of the pointed-to allocation.
+ * @note The argument must be an array expression, not a pointer.
  */
 #define BFC_ARRAY_LENGTH(array) (sizeof(array) / sizeof((array)[0]))
 

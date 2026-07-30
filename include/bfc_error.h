@@ -1,14 +1,22 @@
+/**
+ * @file bfc_error.h
+ * @brief Compiler error values and diagnostics.
+ *
+ * @details
+ * Defines error codes, formatted error constructors, source-associated errors, and user-facing diagnostic output.
+ */
 #ifndef BFC_ERROR_H
 #define BFC_ERROR_H
 
 #include "bfc_token.h"
 
-/* ANSI escape sequences used by the command-line diagnostic formatter. */
 #define COL_OFF "\033[m"
 #define COL_INFO "\033[1;1m"
 #define COL_ERROR "\033[1;31m"
 
-/* Single source of truth for compiler error codes. */
+/**
+ * @brief Single source of truth for compiler error codes.
+ */
 #define ERROR_LIST            \
     X(ERR_OK)                 \
     X(ERR_ARGS)               \
@@ -25,12 +33,10 @@ typedef enum
 #undef X
 } bfc_err_code_t;
 
-/*
- * Error value returned throughout the compiler.
+/**
+ * @brief Error value propagated through compiler stages.
  *
- * token is meaningful for source-related diagnostics and is zero-initialized
- * for errors that do not refer to a particular source location. The type is
- * nodiscard so every returned compiler error must be checked.
+ * @note `token` is zero when the error is not associated with a source location.
  */
 typedef struct [[nodiscard("bfc_error_t result must be checked")]]
 {
@@ -39,40 +45,64 @@ typedef struct [[nodiscard("bfc_error_t result must be checked")]]
     bfc_token_t    token;
 } bfc_error_t;
 
-/* Frequently returned error constants. */
 #define BFC_ERR_OK ((bfc_error_t) {.code = ERR_OK, .msg = {0}, .token = {0}})
+
 #define BFC_ERR_ALLOC                                                                      \
     ((bfc_error_t) {.code = ERR_ALLOC, .msg = "Memory allocation failure!", .token = {0}})
 
-/* Forward declaration avoids requiring the complete source-program structure. */
 struct bfc_program_t;
 
-/* Create a formatted error message without a source token. */
+/**
+ * @brief Creates an error using `printf`-style formatting.
+ *
+ * @param[in] error_code Error category.
+ * @param[in] format Format string followed by matching arguments.
+ *
+ * @return A fully initialized error value.
+ */
 [[gnu::nonnull(2), gnu::format(printf, 2, 3)]]
 bfc_error_t bfc_make_errorf(bfc_err_code_t error_code, const char* format, ...);
 
-/* Create a formatted error message associated with a source token. */
+/**
+ * @brief Creates a source-associated formatted error.
+ *
+ * @param[in] error_code Error category.
+ * @param[in] token Source token associated with the failure.
+ * @param[in] format Format string followed by matching arguments.
+ *
+ * @return A fully initialized error value.
+ */
 [[gnu::nonnull(3), gnu::format(printf, 3, 4)]]
 bfc_error_t
 bfc_make_errorf_with_token(bfc_err_code_t error_code, bfc_token_t token, const char* format, ...);
 
-/* Create an error by copying an existing message string. */
+/**
+ * @brief Creates an error by copying an existing message string.
+ */
 bfc_error_t bfc_make_error(bfc_err_code_t const error_code, char const* msg);
 
-/* Create a token-associated error by copying an existing message string. */
+/**
+ * @brief Creates a token-associated error by copying an existing message string.
+ */
 bfc_error_t bfc_make_error_with_token(
     bfc_err_code_t const error_code,
     char const*          msg,
     bfc_token_t const    token
 );
 
-/* Return the symbolic name of an error code, such as "ERR_IO". */
+/**
+ * @brief Returns the symbolic name of an error code.
+ *
+ * @return A pointer to a static null-terminated string.
+ */
 [[nodiscard, gnu::const, gnu::returns_nonnull]]
 char const* bfc_get_error_code(bfc_err_code_t const error_code);
 
-/*
- * Print a user-facing diagnostic to stderr.
- * Source-related errors include the source line and a caret when available.
+/**
+ * @brief Prints a user-facing compiler diagnostic to standard error.
+ *
+ * @param[in] err Error to report.
+ * @param[in] program Loaded source program, used for source-context diagnostics.
  */
 [[gnu::cold]]
 void bfc_log_error(bfc_error_t err, const struct bfc_program_t* program);

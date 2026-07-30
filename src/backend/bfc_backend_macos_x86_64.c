@@ -1,11 +1,10 @@
-/*
- * macOS x86-64 assembly backend.
+/**
+ * @file bfc_backend_macos_x86_64.c
+ * @brief macOS x86-64 assembly backend.
  *
- * The backend emits Mach-O assembly in Clang/GNU Intel syntax. RBX holds the
- * Brainfuck tape pointer across libc calls, while R11 is reserved as a scratch
- * register for large pointer-movement immediates.
+ * @details
+ * Implements Mach-O symbols, System V-style x86-64 calling conventions used by macOS, and Intel-syntax lowering for all IR operations.
  */
-
 #include "bfc_codegen_internal.h"
 
 #include <inttypes.h>
@@ -14,13 +13,22 @@
 
 #include "bfc_config.h"
 
-/* Materialize a full-width unsigned immediate in the R11 scratch register. */
+/**
+ * @brief Materializes a full-width unsigned immediate in scratch register `r11`.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t emit_load_u64(bfc_asm_t* asm_prog, uint64_t value)
 {
     return bfc_codegen_emitf(asm_prog, "    movabs r11, 0x%016" PRIx64 "\n", value);
 }
 
+/**
+ * @brief Emits Intel-syntax and text-section directives.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t emit_header(bfc_asm_t* asm_prog)
 {
@@ -31,6 +39,11 @@ static bfc_error_t emit_header(bfc_asm_t* asm_prog)
     );
 }
 
+/**
+ * @brief Declares the zero-initialized Brainfuck tape in Mach-O BSS.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t emit_data_section(bfc_asm_t* asm_prog)
 {
@@ -44,9 +57,10 @@ static bfc_error_t emit_data_section(bfc_asm_t* asm_prog)
     );
 }
 
-/*
- * Establish an ABI-compliant main function. RBX is callee-saved and the extra
- * eight-byte stack adjustment preserves 16-byte alignment before libc calls.
+/**
+ * @brief Emits the macOS `main` symbol, stack-aligned prologue, and tape address.
+ *
+ * @internal
  */
 [[gnu::nonnull(1)]]
 static bfc_error_t emit_symbol(bfc_asm_t* asm_prog)
@@ -65,6 +79,11 @@ static bfc_error_t emit_symbol(bfc_asm_t* asm_prog)
     );
 }
 
+/**
+ * @brief Emits the ABI-compliant epilogue and zero process status.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t emit_end(bfc_asm_t* asm_prog)
 {
@@ -78,7 +97,11 @@ static bfc_error_t emit_end(bfc_asm_t* asm_prog)
     );
 }
 
-/* Byte-sized memory arithmetic naturally preserves modulo-256 cell semantics. */
+/**
+ * @brief Lowers wrapping byte-cell addition.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t emit_op_add(bfc_asm_t* asm_prog, int64_t imm)
 {
@@ -92,9 +115,10 @@ static bfc_error_t emit_op_add(bfc_asm_t* asm_prog, int64_t imm)
     return bfc_codegen_emitf(asm_prog, "    add byte ptr [rbx], %u\n", (unsigned) normalized);
 }
 
-/*
- * Prefer an encodable signed immediate. Extremely large movements are lowered
- * through R11 to avoid truncating the IR's 64-bit operand.
+/**
+ * @brief Moves the tape pointer using direct or register materialized immediates.
+ *
+ * @internal
  */
 [[gnu::nonnull(1)]]
 static bfc_error_t emit_op_move(bfc_asm_t* asm_prog, int64_t imm)
@@ -124,7 +148,11 @@ static bfc_error_t emit_op_move(bfc_asm_t* asm_prog, int64_t imm)
     return bfc_codegen_emit_text(asm_prog, imm < 0 ? "    sub rbx, r11\n" : "    add rbx, r11\n");
 }
 
-/* Convert getchar()'s EOF result (-1) to the compiler's chosen zero byte. */
+/**
+ * @brief Calls `getchar`, maps EOF to zero, and stores one byte.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t emit_op_get(bfc_asm_t* asm_prog)
 {
@@ -137,6 +165,11 @@ static bfc_error_t emit_op_get(bfc_asm_t* asm_prog)
     );
 }
 
+/**
+ * @brief Zero-extends the current cell and calls `putchar`.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t emit_op_put(bfc_asm_t* asm_prog)
 {
@@ -146,6 +179,11 @@ static bfc_error_t emit_op_put(bfc_asm_t* asm_prog)
     );
 }
 
+/**
+ * @brief Stores an immediate byte in the current cell.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t emit_op_set(bfc_asm_t* asm_prog, int64_t imm)
 {
@@ -154,6 +192,11 @@ static bfc_error_t emit_op_set(bfc_asm_t* asm_prog, int64_t imm)
     return bfc_codegen_emitf(asm_prog, "    mov byte ptr [rbx], %u\n", (unsigned) normalized);
 }
 
+/**
+ * @brief Branches to the supplied label when the current cell is zero.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1, 2)]]
 static bfc_error_t emit_loop_test_z(bfc_asm_t* asm_prog, const char* label)
 {
@@ -165,6 +208,11 @@ static bfc_error_t emit_loop_test_z(bfc_asm_t* asm_prog, const char* label)
     );
 }
 
+/**
+ * @brief Branches to the supplied label when the current cell is nonzero.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1, 2)]]
 static bfc_error_t emit_loop_test_nz(bfc_asm_t* asm_prog, const char* label)
 {
@@ -176,9 +224,8 @@ static bfc_error_t emit_loop_test_nz(bfc_asm_t* asm_prog, const char* label)
     );
 }
 
-/*
- * The only externally visible symbol in this backend: an immutable dispatch
- * table consumed by generic code generation.
+/**
+ * @brief Immutable backend descriptor exported to generic code generation.
  */
 const bfc_backend_t BFC_BACKEND_MACOS_X86_64 = {
     .target = {

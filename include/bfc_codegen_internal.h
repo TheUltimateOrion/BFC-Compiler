@@ -1,3 +1,10 @@
+/**
+ * @file bfc_codegen_internal.h
+ * @brief Internal backend contract and assembly representation.
+ *
+ * @details
+ * Shared only by generic code generation and target-specific backend implementations.
+ */
 #ifndef BFC_CODEGEN_INTERNAL_H
 #define BFC_CODEGEN_INTERNAL_H
 
@@ -7,12 +14,12 @@
 #include "bfc_codegen.h"
 #include "bfc_target.h"
 
-/*
- * Target backend dispatch table.
+/**
+ * @brief Immutable callback table implemented by one target backend.
  *
- * Every callback must be non-null. The generic code generator owns IR
- * traversal and loop labels; the backend owns assembly syntax, ABI details,
- * register use, and instruction lowering.
+ * @internal
+ *
+ * @note Every callback must be non-null for an advertised backend.
  */
 typedef struct
 {
@@ -30,14 +37,16 @@ typedef struct
     bfc_error_t (*emit_op_set)(bfc_asm_t* asm_prog, int64_t imm);
 
     bfc_error_t (*emit_loop_test_z)(bfc_asm_t* asm_prog, const char* label);
+
     bfc_error_t (*emit_loop_test_nz)(bfc_asm_t* asm_prog, const char* label);
 } bfc_backend_t;
 
-/*
- * Mutable assembly-generation state.
+/**
+ * @brief Mutable assembly-generation state shared by generic codegen and backends.
  *
- * buffer is always null-terminated. length excludes the terminator and must be
- * less than capacity. label_id supplies unique labels for nested loops.
+ * @internal
+ *
+ * @note `buffer` is always null-terminated; `length` excludes the terminator.
  */
 struct bfc_asm
 {
@@ -50,7 +59,11 @@ struct bfc_asm
     size_t capacity;
 };
 
-/* Immutable backend descriptors implemented by platform-specific modules. */
+/**
+ * @brief Backend descriptor declarations.
+ *
+ * @internal
+ */
 extern const bfc_backend_t BFC_BACKEND_WINDOWS_X86_64;
 extern const bfc_backend_t BFC_BACKEND_WINDOWS_I386;
 extern const bfc_backend_t BFC_BACKEND_WINDOWS_AARCH64;
@@ -61,15 +74,27 @@ extern const bfc_backend_t BFC_BACKEND_MACOS_X86_64;
 extern const bfc_backend_t BFC_BACKEND_LINUX_AARCH64;
 extern const bfc_backend_t BFC_BACKEND_LINUX_X86_64;
 
-/* Append raw text to the dynamically growing assembly buffer. */
+/**
+ * @brief Appends raw text to the assembly buffer.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1, 2)]]
 bfc_error_t bfc_codegen_emit_text(bfc_asm_t* asm_prog, const char* text);
 
-/* Recursively lower one IR block through the selected backend. */
+/**
+ * @brief Recursively emits every instruction in an IR block.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1, 2)]]
 bfc_error_t bfc_codegen_emit_block(bfc_asm_t* asm_prog, const bfc_ir_block_t* ir_block);
 
-/* Format and append one assembly fragment using printf-compatible arguments. */
+/**
+ * @brief Formats and appends one assembly fragment.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1, 2), gnu::format(printf, 2, 3)]]
 bfc_error_t bfc_codegen_emitf(bfc_asm_t* asm_prog, const char* format, ...);
 

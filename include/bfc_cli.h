@@ -1,3 +1,10 @@
+/**
+ * @file bfc_cli.h
+ * @brief Command-line parsing interface.
+ *
+ * @details
+ * Defines parsed compiler options and the command-line processor.
+ */
 #ifndef BFC_CLI_H
 #define BFC_CLI_H
 
@@ -5,11 +12,10 @@
 
 #include "bfc_error.h"
 
-/*
- * Parsed command-line state.
+/**
+ * @brief Parsed command-line state.
  *
- * input, output, and target are borrowed pointers into argv and must not be
- * modified or freed. do_assemble means "emit assembly and stop" for -S.
+ * @note String members borrow storage from `argv` and must not be freed.
  */
 typedef struct
 {
@@ -22,14 +28,19 @@ typedef struct
     const char* target;
 } bfc_args_t;
 
-/* Print command-line usage and the available options to stdout. */
+/**
+ * @brief Prints command-line usage and option descriptions.
+ */
 void bfc_cmd_help(void);
 
-/*
- * Parse argv into cmd_args.
+/**
+ * @brief Parses compiler command-line arguments.
  *
- * Exactly one input path is accepted unless help is requested. The special
- * argument "--" stops option parsing. No allocations are performed.
+ * @param[out] cmd_args Receives zero-initialized parsed arguments.
+ * @param[in] argc Argument count.
+ * @param[in] argv Argument vector.
+ *
+ * @return `BFC_ERR_OK` on success; otherwise an argument error.
  */
 [[gnu::nonnull(1)]]
 bfc_error_t bfc_process_args(bfc_args_t* cmd_args, int argc, char* const argv[]);

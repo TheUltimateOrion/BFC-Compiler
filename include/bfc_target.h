@@ -1,9 +1,18 @@
+/**
+ * @file bfc_target.h
+ * @brief Target architecture and operating-system interface.
+ *
+ * @details
+ * Defines code-generation targets, target-triple parsing, and host-target detection.
+ */
 #ifndef BFC_TARGET_H
 #define BFC_TARGET_H
 
 #include "bfc_error.h"
 
-/* Architectures understood by target parsing and backend selection. */
+/**
+ * @brief Architectures understood by target parsing and backend selection.
+ */
 typedef enum
 {
     BFC_ARCH_X86_64,
@@ -12,7 +21,9 @@ typedef enum
     BFC_ARCH_ARM32,
 } bfc_arch_t;
 
-/* Operating systems that may contribute ABI and object-format differences. */
+/**
+ * @brief Operating systems that determine ABI and object-format behaviour.
+ */
 typedef enum
 {
     BFC_OS_WINDOWS,
@@ -20,21 +31,31 @@ typedef enum
     BFC_OS_LINUX,
 } bfc_os_t;
 
-/* Complete code-generation target used to select one backend. */
+/**
+ * @brief Architecture and operating-system pair used to select a backend.
+ */
 typedef struct
 {
     bfc_arch_t arch;
     bfc_os_t   os;
 } bfc_target_t;
 
-/*
- * Parse a supported target triple into target.
- * target is written only when the triple is recognized.
+/**
+ * @brief Parses a supported target triple.
+ *
+ * @param[out] target Receives the parsed target on success.
+ * @param[in] triple Null-terminated target triple.
+ *
+ * @return `BFC_ERR_OK` on success; otherwise an argument error.
  */
 [[gnu::nonnull(1, 2)]]
 bfc_error_t bfc_target_parse(bfc_target_t* target, const char* triple);
 
-/* Return the architecture and operating system of the compiler host. */
+/**
+ * @brief Returns the target corresponding to the compiler host.
+ *
+ * @return The host architecture and operating-system pair.
+ */
 [[gnu::const]]
 bfc_target_t bfc_target_host(void);
 

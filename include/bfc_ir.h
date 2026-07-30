@@ -1,3 +1,10 @@
+/**
+ * @file bfc_ir.h
+ * @brief Brainfuck intermediate representation interface.
+ *
+ * @details
+ * Defines nested IR blocks, instructions, construction, optimization, and recursive destruction.
+ */
 #ifndef BFC_IR_H
 #define BFC_IR_H
 
@@ -7,24 +14,25 @@
 #include "bfc_error.h"
 #include "bfc_token.h"
 
-/* Operations represented by the persistent intermediate representation. */
+/**
+ * @brief Operations understood by the optimizer and code generator.
+ */
 typedef enum
 {
-    IR_ADD,   /* Add a signed immediate to the current cell. */
-    IR_MOVE,  /* Move the tape pointer by a signed byte offset. */
-    IR_PUT,   /* Output the current cell. */
-    IR_GET,   /* Read one input byte into the current cell. */
-    IR_SET,   /* Set the current cell to an immediate byte value. */
-    IR_LOOP   /* Execute a nested block while the current cell is nonzero. */
+    IR_ADD,
+    IR_MOVE,
+    IR_PUT,
+    IR_GET,
+    IR_SET,
+    IR_LOOP
 } bfc_ir_token_type_t;
 
 typedef struct bfc_ir_block bfc_ir_block_t;
 
-/*
- * One IR instruction.
+/**
+ * @brief One IR instruction.
  *
- * val.imm is used by IR_ADD, IR_MOVE, and IR_SET. val.body is used by IR_LOOP
- * and is owned recursively by the containing IR block.
+ * @note `val.imm` is used by immediate operations; `val.body` owns a nested loop block.
  */
 typedef struct
 {
@@ -37,37 +45,55 @@ typedef struct
     } val;
 } bfc_ir_instr_t;
 
-/* Owning, dynamically sized sequence of IR instructions. */
+/**
+ * @brief Owning, dynamically sized sequence of IR instructions.
+ */
 struct bfc_ir_block
 {
     bfc_ir_instr_t* instructions;
-    size_t          length;
-    size_t          capacity;
+
+    size_t length;
+    size_t capacity;
 };
 
-/* Construct an immediate-bearing IR instruction without allocating memory. */
+/**
+ * @brief Constructs an immediate-valued IR instruction.
+ */
 [[nodiscard, gnu::const]]
 bfc_ir_instr_t bfc_ir_make_imm_instr(bfc_ir_token_type_t const ir_token_type, int64_t const imm);
 
-/* Construct an IR instruction whose value union is zero-initialized. */
+/**
+ * @brief Constructs an IR instruction with a zero-initialized operand union.
+ */
 [[nodiscard, gnu::const]]
 bfc_ir_instr_t bfc_ir_make_zero_instr(bfc_ir_token_type_t const ir_token_type);
 
-/*
- * Build a nested IR tree from the token stream.
- * On success, the caller owns *root_block and must destroy it recursively.
+/**
+ * @brief Builds a nested IR tree from the token stream.
+ *
+ * @param[out] root_block Receives the allocated root block.
+ * @param[in] tok_stream Validated token stream.
+ *
+ * @return `BFC_ERR_OK` on success; otherwise an allocation error.
+ *
+ * @note Release the tree with `bfc_ir_destroy()`.
  */
 [[gnu::nonnull(1, 2)]]
 bfc_error_t bfc_ir_create(bfc_ir_block_t** root_block, bfc_token_stream_t const* const tok_stream);
 
-/*
- * Replace *ir_block with an optimized equivalent block.
- * Current optimizations fold repeated ADD/MOVE operations and clear loops.
+/**
+ * @brief Optimizes repeated operations and recognized clear loops in place.
+ *
+ * @param[in,out] ir_block Address of the owned IR block pointer.
+ *
+ * @return `BFC_ERR_OK` on success; otherwise an allocation error.
  */
 [[gnu::nonnull(1)]]
 bfc_error_t bfc_ir_optimize_rep(bfc_ir_block_t** ir_block);
 
-/* Recursively release an IR tree and set the caller's pointer to null. */
+/**
+ * @brief Recursively destroys an IR block and all nested loop bodies.
+ */
 void bfc_ir_destroy(bfc_ir_block_t** proot_block);
 
 #endif  // BFC_IR_H

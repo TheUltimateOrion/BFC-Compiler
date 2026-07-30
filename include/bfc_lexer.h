@@ -1,3 +1,10 @@
+/**
+ * @file bfc_lexer.h
+ * @brief Brainfuck lexical analysis interface.
+ *
+ * @details
+ * Transforms a loaded source program into a location-aware token stream.
+ */
 #ifndef BFC_LEXER_H
 #define BFC_LEXER_H
 
@@ -6,13 +13,16 @@
 #include "bfc_io.h"
 #include "bfc_token.h"
 
-/*
- * Tokenize a loaded source program.
+/**
+ * @brief Tokenizes a loaded Brainfuck source program.
  *
- * Non-Brainfuck characters are ignored. Unless f_no_comments is set, a
- * semicolon suppresses the remainder of its source line. On success, the
- * caller owns *token_stream and must release it with
- * bfc_token_stream_destroy().
+ * @param[out] token_stream Receives the allocated token stream.
+ * @param[in] program Loaded source program.
+ * @param[in] cmd_args Lexer-affecting command-line options.
+ *
+ * @return `BFC_ERR_OK` on success; otherwise an allocation error.
+ *
+ * @note Release the result with `bfc_token_stream_destroy()`.
  */
 [[gnu::nonnull(1, 2)]]
 bfc_error_t bfc_lex(

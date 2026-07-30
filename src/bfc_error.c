@@ -1,10 +1,10 @@
-/*
- * Error construction and diagnostics.
+/**
+ * @file bfc_error.c
+ * @brief Error construction and diagnostic rendering.
  *
- * Errors may carry a source token. Bracket diagnostics use that token to print
- * the source location, the corresponding source line, and a caret marker.
+ * @details
+ * Formats compiler errors and prints source-context diagnostics for bracket failures.
  */
-
 #include "bfc_error.h"
 
 #include <inttypes.h>
@@ -15,8 +15,10 @@
 #include <stdlib.h>
 
 #include "bfc_io.h"
+/**
+ * @brief Builds a formatted error without source-token context.
+ */
 
-/* Construct an error and format its message directly into owned storage. */
 bfc_error_t bfc_make_errorf(bfc_err_code_t error_code, const char* format, ...)
 {
     bfc_error_t err = {
@@ -32,8 +34,10 @@ bfc_error_t bfc_make_errorf(bfc_err_code_t error_code, const char* format, ...)
 
     return err;
 }
+/**
+ * @brief Builds a formatted error associated with a source token.
+ */
 
-/* Formatted constructor for diagnostics tied to one source token. */
 bfc_error_t
 bfc_make_errorf_with_token(bfc_err_code_t error_code, bfc_token_t token, const char* format, ...)
 {
@@ -51,6 +55,9 @@ bfc_make_errorf_with_token(bfc_err_code_t error_code, bfc_token_t token, const c
 
     return err;
 }
+/**
+ * @brief Builds an error by copying a plain message.
+ */
 
 bfc_error_t bfc_make_error(bfc_err_code_t const error_code, char const* msg)
 {
@@ -65,6 +72,9 @@ bfc_error_t bfc_make_error(bfc_err_code_t const error_code, char const* msg)
 
     return err;
 }
+/**
+ * @brief Builds a token-associated error by copying a plain message.
+ */
 
 bfc_error_t
 bfc_make_error_with_token(bfc_err_code_t const error_code, char const* msg, bfc_token_t const token)
@@ -81,11 +91,10 @@ bfc_make_error_with_token(bfc_err_code_t const error_code, char const* msg, bfc_
 
     return err;
 }
-
-/*
- * Convert an error enum to its symbolic spelling. ERROR_LIST keeps this switch
- * synchronized with the enum definition.
+/**
+ * @brief Maps an error enumeration value to its symbolic name.
  */
+
 char const* bfc_get_error_code(bfc_err_code_t const error_code)
 {
     switch (error_code)
@@ -104,11 +113,10 @@ char const* bfc_get_error_code(bfc_err_code_t const error_code)
         break;
     }
 }
-
-/*
- * Source-aware bracket errors receive an expanded diagnostic. Other errors
- * use a compact compiler-style message.
+/**
+ * @brief Prints a colourized diagnostic and optional source-line context.
  */
+
 void bfc_log_error(bfc_error_t const err, const struct bfc_program_t* const program)
 {
     if (err.code == ERR_MISSING_BRACKET || err.code == ERR_MISMATCHED_BRACKET)

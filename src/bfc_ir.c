@@ -1,11 +1,10 @@
-/*
- * Intermediate-representation construction, optimization, and destruction.
+/**
+ * @file bfc_ir.c
+ * @brief IR construction, optimization, and destruction.
  *
- * Loops are represented as recursively owned IR blocks. Construction uses an
- * explicit block stack; optimization produces a replacement block and
- * transfers nested-loop ownership into it.
+ * @details
+ * Builds nested blocks, grows typed arrays safely, folds repeated operations, recognizes clear loops, and manages recursive ownership.
  */
-
 #include "bfc_ir.h"
 
 #include <stdckdint.h>
@@ -17,9 +16,10 @@
 #include "bfc_error.h"
 #include "bfc_memory.h"
 
-/*
- * Temporary construction stack. It is private because it is not part of the
- * persistent IR representation.
+/**
+ * @brief Construction-only stack of currently active nested IR blocks.
+ *
+ * @internal
  */
 typedef struct
 {
@@ -28,8 +28,10 @@ typedef struct
     size_t length;
     size_t capacity;
 } bfc_ir_stack_t;
+/**
+ * @brief Constructs an immediate IR instruction.
+ */
 
-/* Construct an instruction whose union operand is a signed immediate. */
 bfc_ir_instr_t bfc_ir_make_imm_instr(bfc_ir_token_type_t const ir_token_type, int64_t const imm)
 {
     return (bfc_ir_instr_t) {
@@ -37,22 +39,20 @@ bfc_ir_instr_t bfc_ir_make_imm_instr(bfc_ir_token_type_t const ir_token_type, in
         .val = {imm},
     };
 }
+/**
+ * @brief Constructs an instruction with a zeroed operand union.
+ */
 
-/* Construct an operand-free instruction with the union zero-initialized. */
 bfc_ir_instr_t bfc_ir_make_zero_instr(bfc_ir_token_type_t const ir_token_type)
 {
     return (bfc_ir_instr_t) {
         .op = ir_token_type,
     };
 }
-
-/*
- * Build a tree of IR blocks in one pass over the validated token stream.
- *
- * stack.blocks[0] is the root. Entering '[' allocates and pushes a child block;
- * ']' pops back to its parent. Ownership of every child is stored in the
- * corresponding IR_LOOP instruction.
+/**
+ * @brief Builds a nested IR tree using an explicit stack of active loop blocks.
  */
+
 bfc_error_t bfc_ir_create(bfc_ir_block_t** root_block, bfc_token_stream_t const* const tok_stream)
 {
     bfc_error_t err = BFC_ERR_ALLOC;
@@ -90,7 +90,6 @@ bfc_error_t bfc_ir_create(bfc_ir_block_t** root_block, bfc_token_stream_t const*
     size_t i = 0;
     while (i < tok_stream->length)
     {
-        /* Grow the construction stack before another nested loop is pushed. */
         if (stack.length >= stack.capacity)
         {
             size_t new_capacity;
@@ -111,7 +110,6 @@ bfc_error_t bfc_ir_create(bfc_ir_block_t** root_block, bfc_token_stream_t const*
             stack.capacity = new_capacity;
         }
 
-        /* Grow the active block before appending its next instruction. */
         if (current_block->length >= current_block->capacity)
         {
             size_t new_capacity;
@@ -171,10 +169,6 @@ bfc_error_t bfc_ir_create(bfc_ir_block_t** root_block, bfc_token_stream_t const*
             break;
 
             case TT_LOOP_START: {
-                /*
-                 * Store the child block in the current instruction before
-                 * switching current_block to that child.
-                 */
                 bfc_ir_block_t* loop_body = nullptr;
                 loop_body                 = BFC_CALLOC_ARRAY(loop_body, 1);
 
@@ -219,10 +213,6 @@ bfc_error_t bfc_ir_create(bfc_ir_block_t** root_block, bfc_token_stream_t const*
     err = BFC_ERR_OK;
 
 end:
-    /*
-     * On success, transfer the root block to the caller. On failure, recursively
-     * destroy every block reachable from the root.
-     */
     if (stack.blocks)
     {
         if (err.code == ERR_OK)
@@ -239,14 +229,10 @@ end:
 
     return err;
 }
-
-/*
- * Replace one block with an optimized block.
- *
- * Adjacent ADD or MOVE instructions are folded into one signed immediate.
- * Nested loops are optimized recursively, and [+]/[-] clear loops become
- * IR_SET 0 under the compiler's 8-bit wrapping-cell model.
+/**
+ * @brief Combines adjacent arithmetic/movement instructions and converts clear loops to `IR_SET 0`.
  */
+
 bfc_error_t bfc_ir_optimize_rep(bfc_ir_block_t** ir_block)
 {
     if ((*ir_block)->length == 0)
@@ -330,10 +316,6 @@ bfc_error_t bfc_ir_optimize_rep(bfc_ir_block_t** ir_block)
         }
     }
 
-    /*
-     * Nested loop pointers copied into optimized_block retain ownership.
-     * Release only the old block container and its instruction array.
-     */
     free((*ir_block)->instructions);
     free(*ir_block);
 
@@ -351,11 +333,10 @@ end:
 
     return err;
 }
-
-/*
- * Recursively release loop bodies before releasing the containing block.
- * Null input is accepted for cleanup-attribute compatibility.
+/**
+ * @brief Recursively releases an IR block and all owned loop bodies.
  */
+
 void bfc_ir_destroy(bfc_ir_block_t** proot_block)
 {
     if (!proot_block || !*proot_block)
