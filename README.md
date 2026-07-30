@@ -1,75 +1,242 @@
-# BFC-Compiler
+# BFC Compiler
 
-BFC-Compiler is a blazingly fast Brainfuck compiler written in C, designed with a clean, no-nonsense command line experience inspired by clang. It compiles `.bf` programs to optimized output with an emphasis on speed, simplicity, and portability.
+BFC is a Brainfuck compiler written in C23. It parses Brainfuck source code, builds and optimizes an intermediate representation, and emits target-specific assembly.
 
-The entire compiler is implemented to be as minimal as possible with zero external dependencies.
+The project is intentionally small and self-contained. It uses only the C standard library and platform toolchains; no third-party runtime libraries are required.
 
-## Highlights
+## Current status
 
-- Blazingly fast compilation for Brainfuck programs.
-- Clean CLI inspired by clang conventions.
-- Brainfuck-specific optimizations to reduce instruction count and improve runtime performance.
-- Fully self-contained: one-file implementation, standard library only, no third-party dependencies.
-- Simple build: `make` produces a single `bfc` binary.
+BFC currently supports assembly generation for:
 
-## Planned Usage
+- `aarch64-apple-darwin`
+- `x86_64-apple-darwin`
 
-The CLI is intended to feel familiar if you have used clang or gcc:
+The target parser also recognizes Linux and Windows target triples, but those backends are not yet implemented.
+
+The compiler currently emits assembly with `-S`. The final assemble-and-link stage that produces a native executable is planned but not yet complete.
+
+## Features
+
+- C23 implementation
+- Clang-style command-line interface
+- Brainfuck tokenization with source locations
+- Optional semicolon line comments
+- Bracket validation and diagnostics
+- Nested intermediate representation
+- Repeated-operation optimization
+- Repeated pointer-movement optimization
+- Clear-loop optimization for `[-]` and `[+]`
+- Target-triple selection
+- macOS AArch64 backend
+- macOS x86-64 backend
+- AddressSanitizer-enabled debug builds
+- Doxygen-compatible source documentation
+
+## Requirements
+
+To build BFC:
+
+- A C23-capable compiler
+  - Clang is currently the primary tested compiler
+  - GCC may work if it supports the required C23 and GNU attribute features
+- GNU Make or a compatible `make`
+- macOS for executing and linking the currently implemented backends
+
+Optional:
+
+- Doxygen, for generating HTML documentation
+
+## Building
+
+The default configuration is `debug`:
 
 ```bash
-# Compile hello.bf to a native executable (default behavior)
-./bfc hello.bf -o hello
-
-# Emit assembly only
-./bfc -S hello.bf -o hello.s
+make
 ```
 
-## TODO
+Explicit debug build:
 
-- [x] Clang-Style CLI 
+```bash
+make debug
+```
 
-  - [x] -o <file> output selection
+Release build:
 
-  - [x] -S emit assembly
+```bash
+make release
+```
 
-  - [x] --help
+Generated binaries are placed under:
 
-- [x] Language features:
+```text
+build/debug/bfc
+build/release/bfc
+```
 
-  - [x] Line comments starting with ';' 
+Clean build output:
 
-- [ ] Code generation:
+```bash
+make clean
+```
 
-  - [x] Assembly generation from Brainfuck instructions
+## Usage
 
-  - [ ] Assemble + link pipeline (produce executable)
+```text
+bfc [options] <file.bf>
+```
 
-  - [x] Target selection (x86_64, arm64)
+### Emit assembly for the host target
 
-- [ ] Optimizations (Brainfuck-specific):
+```bash
+./build/debug/bfc -S hello.bf
+```
 
-  - [x] Coalesce repeated ops (+++++, -----)
+Default output:
 
-  - [x] Coalesce pointer moves (>>>>, <<<<)
+```text
+hello.bf.s
+```
 
-  - [ ] Peephole optimizations for common patterns
+### Choose the output path
 
-  - [ ] Recognize clear loops ([-] / [+]) and optimize to direct store
-  
-- [x] Diagnostics:
+```bash
+./build/debug/bfc -S hello.bf -o hello.s
+```
 
-  - [x] Mismatched bracket errors
+### Select a target
 
-  - [x] Clear, user-facing messages for invalid inputs and file errors
+```bash
+./build/debug/bfc \
+    --target aarch64-apple-darwin \
+    -S \
+    hello.bf \
+    -o hello-aarch64.s
+```
 
-- [ ] Tests:
+```bash
+./build/debug/bfc \
+    --target x86_64-apple-darwin \
+    -S \
+    hello.bf \
+    -o hello-x86_64.s
+```
 
-  - [ ] Golden tests for canonical Brainfuck programs
+### Display help
 
-  - [ ] Regression tests for optimizations
+```bash
+./build/debug/bfc --help
+```
 
-  - [ ] Negative tests for invalid syntax/bracket structure
+### Display the version
 
-- [ ] Documentation:
+```bash
+./build/debug/bfc --version
+```
 
-  - [ ] CLI reference and examples
+## Command-line options
+
+| Option | Description |
+|---|---|
+| `-h`, `--help` | Display help |
+| `-v`, `--version` | Display the compiler version |
+| `-S`, `--assembly` | Emit assembly and stop |
+| `-o`, `--output <file>` | Set the output path |
+| `-t`, `--target <triple>` | Select the target triple |
+| `--fno-comments` | Disable semicolon line-comment handling |
+| `--` | Stop parsing command-line options |
+
+For complete CLI documentation, see [`docs/cli.md`](docs/cli.md).
+
+## Supported target triples
+
+| Target triple | Status |
+|---|---|
+| `aarch64-apple-darwin` | Implemented |
+| `x86_64-apple-darwin` | Implemented |
+| `aarch64-unknown-linux-gnu` | Recognized; backend not implemented |
+| `x86_64-unknown-linux-gnu` | Recognized; backend not implemented |
+| `aarch64-pc-windows-msvc` | Recognized; backend not implemented |
+| `x86_64-pc-windows-msvc` | Recognized; backend not implemented |
+| `i386-pc-windows-msvc` | Recognized; backend not implemented |
+
+If no target is supplied, BFC selects the host architecture and operating system.
+
+## Brainfuck semantics
+
+BFC currently uses:
+
+- 30,000 cells
+- 8-bit wrapping cells
+- One byte per cell
+- EOF input converted to zero
+- Nested loop blocks in the IR
+
+Semicolon comments are enabled by default:
+
+```brainfuck
++++++ ; this text is ignored
+.
+```
+
+Use `--fno-comments` to disable that extension.
+
+## Optimizations
+
+Implemented optimizations include:
+
+- Coalescing adjacent cell operations
+- Coalescing adjacent pointer movements
+- Clear-loop recognition for `[-]` and `[+]`
+
+## Documentation
+
+Project documentation is available under `docs/`:
+
+- [`docs/architecture.md`](docs/architecture.md)
+- [`docs/backends.md`](docs/backends.md)
+- [`docs/cli.md`](docs/cli.md)
+
+Generate Doxygen HTML documentation with:
+
+```bash
+make docs
+```
+
+Generated documentation is written to:
+
+```text
+docs/doxygen/html/
+```
+
+The generated HTML is not committed to the repository.
+
+## Project structure
+
+```text
+.
+├── docs/
+├── include/
+├── src/
+├── tests/
+├── Doxyfile
+├── LICENSE
+├── Makefile
+├── README.md
+└── VERSION
+```
+
+## Roadmap
+
+- Add the assemble-and-link stage
+- Add Linux x86-64 code generation
+- Add Linux AArch64 code generation
+- Add Windows code-generation backends
+- Expand integration and regression tests
+- Add additional Brainfuck-specific optimizations
+- Add target-aware external toolchain selection
+
+## License
+
+BFC is licensed under the GNU General Public License v3.0.
+
+See [`LICENSE`](LICENSE) for the complete license text.
