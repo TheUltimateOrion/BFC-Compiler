@@ -32,7 +32,7 @@ typedef struct
 
 struct bfc_ir_block
 {
-    bfc_ir_instr_t* instr;
+    bfc_ir_instr_t* instructions;
 
     size_t length;
     size_t capacity;

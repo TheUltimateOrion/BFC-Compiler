@@ -116,7 +116,7 @@ bfc_error_t bfc_codegen_emit_block(bfc_asm_t* asm_prog, const bfc_ir_block_t* ir
 {
     for (size_t i = 0; i < ir_block->length; ++i)
     {
-        const bfc_ir_instr_t* instr = &ir_block->instr[i];
+        const bfc_ir_instr_t* instr = &ir_block->instructions[i];
         bfc_error_t           err;
 
         switch (instr->op)
