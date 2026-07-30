@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "bfc_common.h"
+
 static const bfc_target_entry_t BFC_TARGETS[] = {
     {
         .name = "aarch64-apple-darwin",
@@ -61,7 +63,7 @@ static const bfc_target_entry_t BFC_TARGETS[] = {
 
 bfc_error_t bfc_target_parse(bfc_target_t* target, const char* triple)
 {
-    for (size_t i = 0; i < sizeof(BFC_TARGETS) / sizeof(BFC_TARGETS[0]); ++i)
+    for (size_t i = 0; i < BFC_ARRAY_LENGTH(BFC_TARGETS); ++i)
     {
         if (strcmp(triple, BFC_TARGETS[i].name) == 0)
         {

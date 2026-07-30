@@ -11,7 +11,6 @@ bfc_error_t bfc_parse_jump_table(int64_t** jump_table, bfc_token_stream_t const*
     *jump_table = nullptr;
 
     bfc_error_t err;
-    char        err_str[512];
 
     size_t n = tok_stream->length;
     if (n == 0)
@@ -74,9 +73,9 @@ bfc_error_t bfc_parse_jump_table(int64_t** jump_table, bfc_token_stream_t const*
     return BFC_ERR_OK;
 
 extra_closing_bracket:
-    snprintf(err_str, sizeof(err_str), "Found an extra ']' at line %" PRIu32 ".", toks[i].line);
-
-    err = bfc_make_error_with_token(ERR_MISMATCHED_BRACKET, err_str, toks[i]);
+    err = bfc_make_errorf_with_token(
+        ERR_MISMATCHED_BRACKET, toks[i], "Found an extra ']' at line %" PRIu32 ".", toks[i].line
+    );
 
     free(stack);
     free(jtable);
@@ -84,13 +83,11 @@ extra_closing_bracket:
     return err;
 
 missing_closing_bracket:
-    snprintf(
-        err_str, sizeof(err_str),
+    err = bfc_make_errorf_with_token(
+        ERR_MISMATCHED_BRACKET, toks[stack[sp - 1]],
         "Missing a closing bracket ']' for opening bracket '[' at line %" PRIu32 ".",
         toks[stack[sp - 1]].line
     );
-
-    err = bfc_make_error_with_token(ERR_MISSING_BRACKET, err_str, toks[stack[sp - 1]]);
 
     free(stack);
     free(jtable);

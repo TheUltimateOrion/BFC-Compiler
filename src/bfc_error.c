@@ -2,11 +2,46 @@
 
 #include <inttypes.h>
 #include <math.h>
+#include <stdarg.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "bfc_io.h"
+
+bfc_error_t bfc_make_errorf(bfc_err_code_t error_code, const char* format, ...)
+{
+    bfc_error_t err = {
+        .code = error_code,
+    };
+
+    va_list args;
+    va_start(args, format);
+
+    vsnprintf(err.msg, sizeof(err.msg), format, args);
+
+    va_end(args);
+
+    return err;
+}
+
+bfc_error_t
+bfc_make_errorf_with_token(bfc_err_code_t error_code, bfc_token_t token, const char* format, ...)
+{
+    bfc_error_t err = {
+        .code  = error_code,
+        .token = token,
+    };
+
+    va_list args;
+    va_start(args, format);
+
+    vsnprintf(err.msg, sizeof(err.msg), format, args);
+
+    va_end(args);
+
+    return err;
+}
 
 bfc_error_t bfc_make_error(bfc_err_code_t const error_code, char const* msg)
 {

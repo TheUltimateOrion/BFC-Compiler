@@ -37,6 +37,13 @@ typedef struct [[nodiscard("bfc_error_t result must be checked")]]
 
 struct bfc_program_t;
 
+[[gnu::nonnull(2), gnu::format(printf, 2, 3)]]
+bfc_error_t bfc_make_errorf(bfc_err_code_t error_code, const char* format, ...);
+
+[[gnu::nonnull(3), gnu::format(printf, 3, 4)]]
+bfc_error_t
+bfc_make_errorf_with_token(bfc_err_code_t error_code, bfc_token_t token, const char* format, ...);
+
 bfc_error_t bfc_make_error(bfc_err_code_t const error_code, char const* msg);
 
 bfc_error_t bfc_make_error_with_token(

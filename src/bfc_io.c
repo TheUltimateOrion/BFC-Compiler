@@ -1,4 +1,5 @@
 #include "bfc_io.h"
+#include "bfc_error.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -86,10 +87,7 @@ bfc_error_t bfc_program_create(bfc_program_t** program, char const* file_path)
             free(prog);
             fclose(file_handle);
 
-            char err_str[512];
-            snprintf(err_str, sizeof(err_str), "Unable to read from file '%s'!", file_path);
-
-            return bfc_make_error(ERR_IO, err_str);
+            return bfc_make_errorf(ERR_IO, "Unable to read from file '%s'!", file_path);
         }
 
         prog->buffer[end] = '\0';
@@ -115,9 +113,7 @@ bfc_error_t bfc_program_create(bfc_program_t** program, char const* file_path)
         return BFC_ERR_OK;
     }
 
-    char err_str[512];
-    snprintf(err_str, sizeof(err_str), "No such file or directory: '%s'", file_path);
-    return bfc_make_error(ERR_IO, err_str);
+    return bfc_make_errorf(ERR_IO, "No such file or directory: '%s'", file_path);
 }
 
 void bfc_program_destroy(bfc_program_t** pprogram)

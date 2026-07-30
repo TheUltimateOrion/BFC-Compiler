@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "bfc_common.h"
+
 typedef bfc_error_t (*bfc_option_handler_t)(bfc_args_t* args, const char* value);
 
 typedef struct
@@ -104,8 +106,6 @@ static const bfc_option_t BFC_OPTIONS[] = {
      }
 };
 
-#define BFC_ARRAY_LENGTH(array) (sizeof(array) / sizeof((array)[0]))
-
 [[gnu::pure, gnu::nonnull(1)]]
 static const bfc_option_t* bfc_find_option(const char* argument)
 {
@@ -192,11 +192,7 @@ bfc_error_t bfc_process_args(bfc_args_t* cmd_args, int argc, char* const argv[])
 
             if (!option)
             {
-                char error_message[512];
-
-                snprintf(error_message, sizeof(error_message), "Unknown argument: '%s'", argument);
-
-                return bfc_make_error(ERR_ARGS, error_message);
+                return bfc_make_errorf(ERR_ARGS, "Unknown argument: '%s'", argument);
             }
 
             const char* value = nullptr;
