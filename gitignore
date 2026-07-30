@@ -1,0 +1,67 @@
+# Build dependencies
+*.d
+
+# Object and intermediate files
+*.o
+*.ko
+*.obj
+*.elf
+*.gch
+*.pch
+*.lo
+
+# Generated assembly
+*.s
+*.asm
+
+# Linker output
+*.ilk
+*.map
+*.exp
+
+# Static and shared libraries
+*.a
+*.la
+*.lib
+*.dll
+*.dylib
+*.so
+*.so.*
+
+# Executables
+*.app
+*.exe
+*.hex
+*.i*86
+*.out
+*.x86_64
+
+# Debug information
+*.dSYM/
+*.dwo
+*.idb
+*.pdb
+*.su
+
+# Kernel module build output
+*.cmd
+*.mod*
+.tmp_versions/
+Module.symvers
+Mkfile.old
+dkms.conf
+modules.order
+
+# Project build output
+build/
+bfc
+
+# Generated documentation
+docs/doxygen/
+
+# Editor configuration
+.clangd
+.vscode/
+
+# Operating-system files
+.DS_Store
