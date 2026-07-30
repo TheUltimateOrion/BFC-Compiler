@@ -1,13 +1,16 @@
-# Prerequisites
+# Build dependencies
 *.d
 
-# Object files
+# Object and intermediate files
 *.o
 *.ko
 *.obj
 *.elf
+*.gch
+*.pch
+*.lo
 
-# Assembly files
+# Generated assembly
 *.s
 *.asm
 
@@ -16,53 +19,49 @@
 *.map
 *.exp
 
-# Precompiled Headers
-*.gch
-*.pch
-
-# Libraries
-*.lib
+# Static and shared libraries
 *.a
 *.la
-*.lo
-
-# Shared objects (inc. Windows DLLs)
+*.lib
 *.dll
+*.dylib
 *.so
 *.so.*
-*.dylib
 
 # Executables
-*.exe
-*.out
 *.app
-*.i*86
-*.x86_64
+*.exe
 *.hex
+*.i*86
+*.out
+*.x86_64
 
-# Debug files
+# Debug information
 *.dSYM/
-*.su
+*.dwo
 *.idb
 *.pdb
+*.su
 
-# Kernel Module Compile Results
-*.mod*
+# Kernel module build output
 *.cmd
+*.mod*
 .tmp_versions/
-modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+modules.order
 
-# debug information files
-*.dwo
+# Project build output
+build/
+bfc
 
-# Configuration files
+# Generated documentation
+docs/doxygen/
+
+# Editor configuration
 .clangd
 .vscode/
 
-# Output
-bfc
-
+# Operating-system files
 .DS_Store
