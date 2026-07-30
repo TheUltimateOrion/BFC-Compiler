@@ -60,6 +60,7 @@ dkms.conf
 
 # Configuration files
 .clangd
+.vscode/
 
 # Output
 bfc
