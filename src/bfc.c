@@ -1,3 +1,10 @@
+/*
+ * bfc compiler driver.
+ *
+ * main() coordinates the complete compilation pipeline and uses cleanup
+ * attributes to release successfully created objects on every exit path.
+ */
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,6 +18,10 @@
 #include "bfc_lexer.h"
 #include "bfc_target.h"
 
+/*
+ * Propagate stage failures through one cleanup path. The cleanup attributes
+ * release every object that was successfully created before the error.
+ */
 #define CHECK_ERROR(error_)                 \
     do                                      \
     {                                       \
@@ -28,6 +39,10 @@ int main(int argc, char** argv)
 
     bfc_args_t cmd_args = {0};
 
+    /*
+     * Each pointer starts null, making every registered cleanup function safe
+     * even when the corresponding creation stage is never reached.
+     */
     [[gnu::cleanup(bfc_program_destroy)]]
     bfc_program_t* program = nullptr;
 
@@ -45,6 +60,7 @@ int main(int argc, char** argv)
 
     bfc_error_t err;
 
+    /* Front end: options, source loading, lexing, validation, and IR. */
     err = bfc_process_args(&cmd_args, argc, argv);
     CHECK_ERROR(err);
 
@@ -70,6 +86,7 @@ int main(int argc, char** argv)
     err = bfc_ir_optimize_rep(&root_block);
     CHECK_ERROR(err);
 
+    /* Explicit --target overrides host detection and enables cross-codegen. */
     bfc_target_t target;
 
     if (cmd_args.target)
@@ -83,6 +100,7 @@ int main(int argc, char** argv)
         target = bfc_target_host();
     }
 
+    /* Back end: lower optimized IR into target-specific assembly text. */
     err = bfc_codegen(&asm_prog, root_block, target);
 
     CHECK_ERROR(err);

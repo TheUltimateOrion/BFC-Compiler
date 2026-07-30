@@ -1,3 +1,11 @@
+/*
+ * macOS AArch64 assembly backend.
+ *
+ * The backend emits Mach-O assembly using Apple's relocation syntax. X19 holds
+ * the Brainfuck tape pointer across libc calls, while X16/W16 is used as a
+ * scratch register for immediates and cell values.
+ */
+
 #include "bfc_codegen_internal.h"
 
 #include <inttypes.h>
@@ -6,6 +14,10 @@
 
 #include "bfc_config.h"
 
+/*
+ * Materialize a 64-bit constant in X16 as one MOVZ followed by only the MOVK
+ * instructions required for nonzero 16-bit chunks.
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t emit_load_u64(bfc_asm_t* asm_prog, uint64_t value)
 {
@@ -61,6 +73,10 @@ static bfc_error_t emit_data_section(bfc_asm_t* asm_prog)
     );
 }
 
+/*
+ * Establish an ABI-compliant main function and preserve X19, the callee-saved
+ * register used as the tape pointer.
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t emit_symbol(bfc_asm_t* asm_prog)
 {
@@ -90,6 +106,10 @@ static bfc_error_t emit_end(bfc_asm_t* asm_prog)
     );
 }
 
+/*
+ * Normalize the IR operand to one byte so positive and negative additions use
+ * Brainfuck's modulo-256 cell semantics.
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t emit_op_add(bfc_asm_t* asm_prog, int64_t imm)
 {
@@ -109,6 +129,10 @@ static bfc_error_t emit_op_add(bfc_asm_t* asm_prog, int64_t imm)
     );
 }
 
+/*
+ * Use AArch64's 12-bit add/sub immediate form for common small movements.
+ * Larger magnitudes are materialized in X16.
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t emit_op_move(bfc_asm_t* asm_prog, int64_t imm)
 {
@@ -143,6 +167,7 @@ static bfc_error_t emit_op_move(bfc_asm_t* asm_prog, int64_t imm)
     return bfc_codegen_emit_text(asm_prog, "    add x19, x19, x16\n");
 }
 
+/* Convert getchar()'s EOF result (-1) to the compiler's chosen zero byte. */
 [[gnu::nonnull(1)]]
 static bfc_error_t emit_op_get(bfc_asm_t* asm_prog)
 {
@@ -203,6 +228,9 @@ static bfc_error_t emit_loop_test_nz(bfc_asm_t* asm_prog, const char* label)
     );
 }
 
+/*
+ * Immutable macOS/AArch64 callback table exported to generic code generation.
+ */
 const bfc_backend_t BFC_BACKEND_MACOS_AARCH64 = {
     .target = {.arch = BFC_ARCH_AARCH64, .os = BFC_OS_MACOS},
 

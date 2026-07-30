@@ -1,3 +1,11 @@
+/*
+ * macOS x86-64 assembly backend.
+ *
+ * The backend emits Mach-O assembly in Clang/GNU Intel syntax. RBX holds the
+ * Brainfuck tape pointer across libc calls, while R11 is reserved as a scratch
+ * register for large pointer-movement immediates.
+ */
+
 #include "bfc_codegen_internal.h"
 
 #include <inttypes.h>
@@ -6,6 +14,7 @@
 
 #include "bfc_config.h"
 
+/* Materialize a full-width unsigned immediate in the R11 scratch register. */
 [[gnu::nonnull(1)]]
 static bfc_error_t emit_load_u64(bfc_asm_t* asm_prog, uint64_t value)
 {
@@ -35,6 +44,10 @@ static bfc_error_t emit_data_section(bfc_asm_t* asm_prog)
     );
 }
 
+/*
+ * Establish an ABI-compliant main function. RBX is callee-saved and the extra
+ * eight-byte stack adjustment preserves 16-byte alignment before libc calls.
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t emit_symbol(bfc_asm_t* asm_prog)
 {
@@ -65,6 +78,7 @@ static bfc_error_t emit_end(bfc_asm_t* asm_prog)
     );
 }
 
+/* Byte-sized memory arithmetic naturally preserves modulo-256 cell semantics. */
 [[gnu::nonnull(1)]]
 static bfc_error_t emit_op_add(bfc_asm_t* asm_prog, int64_t imm)
 {
@@ -78,6 +92,10 @@ static bfc_error_t emit_op_add(bfc_asm_t* asm_prog, int64_t imm)
     return bfc_codegen_emitf(asm_prog, "    add byte ptr [rbx], %u\n", (unsigned) normalized);
 }
 
+/*
+ * Prefer an encodable signed immediate. Extremely large movements are lowered
+ * through R11 to avoid truncating the IR's 64-bit operand.
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t emit_op_move(bfc_asm_t* asm_prog, int64_t imm)
 {
@@ -106,6 +124,7 @@ static bfc_error_t emit_op_move(bfc_asm_t* asm_prog, int64_t imm)
     return bfc_codegen_emit_text(asm_prog, imm < 0 ? "    sub rbx, r11\n" : "    add rbx, r11\n");
 }
 
+/* Convert getchar()'s EOF result (-1) to the compiler's chosen zero byte. */
 [[gnu::nonnull(1)]]
 static bfc_error_t emit_op_get(bfc_asm_t* asm_prog)
 {
@@ -157,6 +176,10 @@ static bfc_error_t emit_loop_test_nz(bfc_asm_t* asm_prog, const char* label)
     );
 }
 
+/*
+ * The only externally visible symbol in this backend: an immutable dispatch
+ * table consumed by generic code generation.
+ */
 const bfc_backend_t BFC_BACKEND_MACOS_X86_64 = {
     .target = {
         .arch = BFC_ARCH_X86_64,

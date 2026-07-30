@@ -1,3 +1,11 @@
+/*
+ * Bracket validation and jump-table construction.
+ *
+ * An explicit stack records unmatched '[' token indices. Each matched pair is
+ * stored bidirectionally in the resulting table; non-bracket entries retain
+ * the -1 sentinel.
+ */
+
 #include "bfc_jumptable.h"
 
 #include <inttypes.h>
@@ -8,6 +16,10 @@
 
 #include "bfc_memory.h"
 
+/*
+ * Build a table with one entry per token. Matched brackets contain each
+ * other's indices; all other tokens retain -1.
+ */
 bfc_error_t bfc_parse_jump_table(int64_t** jump_table, bfc_token_stream_t const* const tok_stream)
 {
     *jump_table = nullptr;
@@ -30,6 +42,7 @@ bfc_error_t bfc_parse_jump_table(int64_t** jump_table, bfc_token_stream_t const*
         return BFC_ERR_ALLOC;
     }
 
+    /* Initialize the sentinel for non-bracket tokens. */
     for (size_t i = 0; i < n; ++i)
     {
         jtable[i] = -1;
@@ -48,6 +61,10 @@ bfc_error_t bfc_parse_jump_table(int64_t** jump_table, bfc_token_stream_t const*
 
     size_t i;
     size_t j;
+    /*
+     * Push opening-bracket indices. A closing bracket pops the latest opening
+     * bracket, which naturally validates nesting.
+     */
     for (i = 0; i < n; ++i)
     {
         if (toks[i].type == TT_LOOP_START)
@@ -100,6 +117,7 @@ missing_closing_bracket:
     return err;
 }
 
+/* Release the flat jump table and clear the caller's pointer. */
 void bfc_jump_table_destroy(int64_t** pjump_table)
 {
     if (!pjump_table || !*pjump_table)

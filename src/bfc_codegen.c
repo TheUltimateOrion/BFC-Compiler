@@ -1,3 +1,11 @@
+/*
+ * Generic assembly generation.
+ *
+ * This module owns backend selection, recursive IR traversal, assembly-buffer
+ * management, formatted emission, and assembly-file output. Architecture- and
+ * OS-specific instruction syntax belongs in backend modules.
+ */
+
 #include "bfc_codegen_internal.h"
 
 #include <stdarg.h>
@@ -10,6 +18,10 @@
 #include "bfc_config.h"
 #include "bfc_memory.h"
 
+/*
+ * Resolve the exact architecture/OS pair to an immutable callback table.
+ * Return nullptr when the requested backend is not compiled into this build.
+ */
 [[gnu::pure]]
 static const bfc_backend_t* bfc_backend_select(bfc_target_t target)
 {
@@ -26,6 +38,10 @@ static const bfc_backend_t* bfc_backend_select(bfc_target_t target)
     return nullptr;
 }
 
+/*
+ * Emit loop structure generically while delegating branch syntax to the
+ * backend. label_id guarantees unique labels across nested and sibling loops.
+ */
 [[gnu::nonnull(1, 2)]]
 static bfc_error_t bfc_codegen_emit_loop(bfc_asm_t* asm_prog, const bfc_ir_block_t* body)
 {
@@ -68,6 +84,13 @@ static bfc_error_t bfc_codegen_emit_loop(bfc_asm_t* asm_prog, const bfc_ir_block
     return err;
 }
 
+/*
+ * Append text while preserving two invariants:
+ *   - length excludes the trailing null byte
+ *   - buffer[length] is always '\0'
+ *
+ * Size arithmetic is checked before geometrically growing the byte buffer.
+ */
 bfc_error_t bfc_codegen_emit_text(bfc_asm_t* asm_prog, const char* text)
 {
     const size_t text_length = strlen(text);
@@ -112,6 +135,10 @@ bfc_error_t bfc_codegen_emit_text(bfc_asm_t* asm_prog, const char* text)
     return BFC_ERR_OK;
 }
 
+/*
+ * Traverse one IR block and dispatch each operation through the selected
+ * backend. IR_LOOP recurses through the generic loop emitter above.
+ */
 bfc_error_t bfc_codegen_emit_block(bfc_asm_t* asm_prog, const bfc_ir_block_t* ir_block)
 {
     for (size_t i = 0; i < ir_block->length; ++i)
@@ -145,6 +172,10 @@ bfc_error_t bfc_codegen_emit_block(bfc_asm_t* asm_prog, const bfc_ir_block_t* ir
     return BFC_ERR_OK;
 }
 
+/*
+ * Format one assembly fragment into a bounded temporary buffer before
+ * appending it. The format attribute lets the compiler validate call sites.
+ */
 [[gnu::nonnull(1, 2), gnu::format(printf, 2, 3)]]
 bfc_error_t bfc_codegen_emitf(bfc_asm_t* asm_prog, const char* format, ...)
 {
@@ -165,6 +196,12 @@ bfc_error_t bfc_codegen_emitf(bfc_asm_t* asm_prog, const char* format, ...)
     return bfc_codegen_emit_text(asm_prog, buffer);
 }
 
+/*
+ * Allocate and populate an assembly object.
+ *
+ * Ownership is transferred to *out_asm only after every emission stage
+ * succeeds. Any intermediate failure destroys the partially built object.
+ */
 bfc_error_t bfc_codegen(bfc_asm_t** out_asm, const bfc_ir_block_t* ir_block, bfc_target_t target)
 {
     *out_asm = nullptr;
@@ -228,6 +265,7 @@ bfc_error_t bfc_codegen(bfc_asm_t** out_asm, const bfc_ir_block_t* ir_block, bfc
     return BFC_ERR_OK;
 }
 
+/* Release the generated text buffer and its owning assembly object. */
 void bfc_asm_destroy(bfc_asm_t** pasm_prog)
 {
     if (!pasm_prog || !*pasm_prog)
@@ -241,6 +279,10 @@ void bfc_asm_destroy(bfc_asm_t** pasm_prog)
     *pasm_prog = nullptr;
 }
 
+/*
+ * Write exactly length bytes; the internal null terminator is not part of the
+ * assembly file.
+ */
 bfc_error_t bfc_asm_write_file(const bfc_asm_t* asm_prog, const char* path)
 {
     FILE* file = fopen(path, "wb");

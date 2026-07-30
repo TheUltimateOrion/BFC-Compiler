@@ -1,3 +1,10 @@
+/*
+ * Source-file loading and source-line access.
+ *
+ * bfc_program_t owns a copied path and a null-terminated source buffer.
+ * bfc_program_getline() returns a separate allocation owned by its caller.
+ */
+
 #include "bfc_io.h"
 #include "bfc_error.h"
 
@@ -8,6 +15,10 @@
 
 #include "bfc_memory.h"
 
+/*
+ * Load an entire source file into memory and transfer ownership through
+ * *program only after every allocation and read succeeds.
+ */
 bfc_error_t bfc_program_create(bfc_program_t** program, char const* file_path)
 {
     FILE* file_handle;
@@ -50,6 +61,10 @@ bfc_error_t bfc_program_create(bfc_program_t** program, char const* file_path)
             return bfc_make_error(ERR_IO, "Unable to seek the start of file!");
         }
 
+        /*
+         * Validate conversion from ftell()'s signed long to size_t and reserve
+         * one additional byte for the null terminator.
+         */
         if (file_size < 0 || (uintmax_t) file_size > (uintmax_t) (SIZE_MAX - 1))
         {
             free(prog);
@@ -97,6 +112,10 @@ bfc_error_t bfc_program_create(bfc_program_t** program, char const* file_path)
 
         fclose(file_handle);
 
+        /*
+         * Count logical lines. A nonempty final line counts even when the file
+         * does not end with a newline.
+         */
         prog->line_count = 0;
 
         for (size_t i = 0; i < prog->file_size; ++i)
@@ -119,6 +138,7 @@ bfc_error_t bfc_program_create(bfc_program_t** program, char const* file_path)
     return bfc_make_errorf(ERR_IO, "No such file or directory: '%s'", file_path);
 }
 
+/* Release both owned strings and then the program object itself. */
 void bfc_program_destroy(bfc_program_t** pprogram)
 {
     if (!pprogram || !*pprogram)
@@ -133,6 +153,10 @@ void bfc_program_destroy(bfc_program_t** pprogram)
     *pprogram = nullptr;
 }
 
+/*
+ * Return a borrowed pointer to the final path component; no allocation occurs.
+ * Both POSIX and Windows path separators are recognized.
+ */
 char const* bfc_program_getname(bfc_program_t const* program)
 {
     char const* name = program->path;
@@ -148,6 +172,10 @@ char const* bfc_program_getname(bfc_program_t const* program)
     return name;
 }
 
+/*
+ * Return a newly allocated copy of a one-based source line. The caller owns
+ * the result and must free it.
+ */
 char* bfc_program_getline(bfc_program_t const* const program, size_t const n)
 {
     if (n == 0 || n > program->line_count)

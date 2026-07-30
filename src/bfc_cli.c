@@ -1,3 +1,11 @@
+/*
+ * Table-driven command-line parser and help generator.
+ *
+ * Each option descriptor supplies its spellings, optional value name,
+ * description, and state-update handler. The same table drives parsing and
+ * formatted help output.
+ */
+
 #include "bfc_cli.h"
 
 #include <stddef.h>
@@ -6,6 +14,10 @@
 
 #include "bfc_common.h"
 
+/*
+ * Handlers mutate parsed state. value is nullptr for flag options and points
+ * into argv for options that consume a value.
+ */
 typedef bfc_error_t (*bfc_option_handler_t)(bfc_args_t* args, const char* value);
 
 typedef struct
@@ -68,6 +80,10 @@ static bfc_error_t bfc_set_target(bfc_args_t* args, const char* value)
     return BFC_ERR_OK;
 }
 
+/*
+ * Single source of truth for accepted spellings and generated help text.
+ * Order here is the order displayed by bfc_cmd_help().
+ */
 static const bfc_option_t BFC_OPTIONS[] = {
     {
      .short_name  = "-h",
@@ -106,6 +122,7 @@ static const bfc_option_t BFC_OPTIONS[] = {
      }
 };
 
+/* Match one complete short or long option spelling. */
 [[gnu::pure, gnu::nonnull(1)]]
 static const bfc_option_t* bfc_find_option(const char* argument)
 {
@@ -127,6 +144,7 @@ static const bfc_option_t* bfc_find_option(const char* argument)
     return nullptr;
 }
 
+/* Format option usage dynamically from BFC_OPTIONS to avoid duplicated text. */
 void bfc_cmd_help(void)
 {
     printf("OVERVIEW: bfc Brainfuck compiler\n\n");
@@ -170,6 +188,13 @@ void bfc_cmd_help(void)
     }
 }
 
+/*
+ * Parse exactly one positional input path.
+ *
+ * "--" permanently disables option parsing. Options with value_name consume
+ * the following argv element; attached forms such as --target=value are not
+ * handled by this parser.
+ */
 bfc_error_t bfc_process_args(bfc_args_t* cmd_args, int argc, char* const argv[])
 {
     *cmd_args = (bfc_args_t) {0};

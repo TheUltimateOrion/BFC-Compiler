@@ -1,3 +1,11 @@
+/*
+ * Brainfuck lexer.
+ *
+ * The lexer scans the complete source buffer once, records one-based source
+ * locations, and emits tokens only for Brainfuck instructions. By default, a
+ * semicolon starts a line comment unless --fno-comments is active.
+ */
+
 #include "bfc_lexer.h"
 
 #include <stdbool.h>
@@ -7,6 +15,10 @@
 
 #include "bfc_memory.h"
 
+/*
+ * Allocate a stream in *token_stream. The source size is a safe upper bound
+ * for token count because each input byte can produce at most one token.
+ */
 bfc_error_t bfc_lex(
     bfc_token_stream_t**       token_stream,
     bfc_program_t const* const program,
@@ -47,6 +59,10 @@ bfc_error_t bfc_lex(
 
     bool in_comment = false;
 
+/*
+ * Comment suppression is centralized here so token cases remain generated
+ * directly from TOKEN_MAP.
+ */
 #define EMIT_TOKEN(toktype)                                                                        \
     if (!in_comment) tok_stream->tokens[token_list_size++] = bfc_make_token((toktype), line, col);
 
@@ -97,6 +113,10 @@ bfc_error_t bfc_lex(
 
 #undef EMIT_TOKEN
 
+    /*
+     * Shrinking is optional: if realloc fails, the original larger token array
+     * remains valid and compilation can continue.
+     */
     if (token_list_size > 0)
     {
         bfc_token_t* tmp = BFC_REALLOC_ARRAY(tok_stream->tokens, token_list_size);
@@ -121,6 +141,7 @@ bfc_error_t bfc_lex(
     err = BFC_ERR_OK;
 
 end:
+    /* Free only the local, not-yet-transferred stream on failure. */
     if (tok_stream)
     {
         free(tok_stream->tokens);
