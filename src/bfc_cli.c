@@ -3,7 +3,8 @@
  * @brief Table-driven command-line parser.
  *
  * @details
- * Defines option metadata, handlers, help rendering, positional-input rules, and the end-of-options marker.
+ * Defines option metadata, handlers, help rendering, positional-input rules, and the end-of-options
+ * marker.
  */
 #include "bfc_cli.h"
 
@@ -111,6 +112,19 @@ static bfc_error_t bfc_set_target(bfc_args_t* args, const char* value)
 }
 
 /**
+ * @brief Sets the version-print flag.
+ *
+ * @internal
+ */
+static bfc_error_t bfc_set_version(bfc_args_t* args, const char* value)
+{
+    (void) value;
+
+    args->ask_version = true;
+    return BFC_ERR_OK;
+}
+
+/**
  * @brief Single source of truth for option parsing and help rendering.
  *
  * @internal
@@ -150,7 +164,14 @@ static const bfc_option_t BFC_OPTIONS[] = {
      .value_name  = "triple",
      .description = "Compile for the given target <triple>",
      .handler     = bfc_set_target,
-     }
+     },
+    {
+     .short_name  = "-v",
+     .long_name   = "--version",
+     .value_name  = nullptr,
+     .description = "Display compiler version",
+     .handler     = bfc_set_version,
+     },
 };
 
 /**
@@ -178,6 +199,7 @@ static const bfc_option_t* bfc_find_option(const char* argument)
 
     return nullptr;
 }
+
 /**
  * @brief Renders usage text from the same option table used for parsing.
  */
@@ -224,6 +246,7 @@ void bfc_cmd_help(void)
         printf("  %-30s %s\n", usage, option->description);
     }
 }
+
 /**
  * @brief Parses options, option values, the end-of-options marker, and one input path.
  */
@@ -278,7 +301,7 @@ bfc_error_t bfc_process_args(bfc_args_t* cmd_args, int argc, char* const argv[])
                 return err;
             }
 
-            if (cmd_args->ask_help)
+            if (cmd_args->ask_help || cmd_args->ask_version)
             {
                 return BFC_ERR_OK;
             }

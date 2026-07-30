@@ -21,6 +21,7 @@ typedef struct
 {
     bool do_assemble;
     bool ask_help;
+    bool ask_version;
     bool f_no_comments;
 
     const char* input;

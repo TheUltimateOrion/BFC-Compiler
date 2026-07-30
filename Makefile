@@ -1,24 +1,29 @@
-CC          := cc
-CSTD        := c23
-CONFIG      ?= debug
+CC           := cc
+CSTD         := c23
+CONFIG       ?= debug
 
-SRC_DIR     := src
-INCLUDE_DIR := include
-BUILD_ROOT  := build
+SRC_DIR      := src
+INCLUDE_DIR  := include
+BUILD_ROOT   := build
 
-DOXYGEN     ?= doxygen
-DOXYFILE    ?= Doxyfile
-DOCS_DIR    ?= docs/doxygen
+DOXYGEN      ?= doxygen
+DOXYFILE     ?= Doxyfile
+DOCS_DIR     ?= docs/doxygen
 
-CONFIG_DIR  := $(BUILD_ROOT)/$(CONFIG)
-OBJ_DIR     := $(CONFIG_DIR)/obj
-TARGET      := $(CONFIG_DIR)/bfc
+CONFIG_DIR   := $(BUILD_ROOT)/$(CONFIG)
+OBJ_DIR      := $(CONFIG_DIR)/obj
+TARGET       := $(CONFIG_DIR)/bfc
 
-SRCS        := $(shell find $(SRC_DIR) -name '*.c')
-OBJS        := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRCS))
+SRCS         := $(shell find $(SRC_DIR) -name '*.c')
+OBJS         := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRCS))
 
+VERSION_FILE := VERSION
+VERSION      := $(strip $(shell cat $(VERSION_FILE)))
 
 # Compiler configuration
+
+CPPFLAGS     += -I$(INCLUDE_DIR)
+CPPFLAGS     += -DBFC_VERSION=\"$(VERSION)\"
 
 COMMON_CFLAGS := \
 	-std=$(CSTD) \
@@ -26,7 +31,11 @@ COMMON_CFLAGS := \
 	-Wall \
 	-Wextra \
 	-Wpedantic \
-	-Wuninitialized
+	-Wuninitialized \
+	-Wall \
+	-Wconversion \
+	-Wsign-conversion \
+	-Werror
 
 ifeq ($(CONFIG),release)
 	CFLAGS  := $(COMMON_CFLAGS) -O3 -DNDEBUG
@@ -80,4 +89,6 @@ $(TARGET): $(OBJS)
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+
+$(OBJS): $(VERSION_FILE)

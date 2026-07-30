@@ -3,7 +3,8 @@
  * @brief bfc compiler driver.
  *
  * @details
- * Coordinates CLI parsing, source loading, lexing, validation, IR construction and optimization, target resolution, code generation, and output.
+ * Coordinates CLI parsing, source loading, lexing, validation, IR construction and optimization,
+ * target resolution, code generation, and output.
  */
 #include <stdint.h>
 #include <stdio.h>
@@ -17,13 +18,15 @@
 #include "bfc_jumptable.h"
 #include "bfc_lexer.h"
 #include "bfc_target.h"
+#include "bfc_version.h"
 
 /**
  * @brief Propagates a stage error to the shared cleanup path.
  *
  * @internal
  *
- * @note The macro evaluates its argument more than once only through field access; pass an error object, not an expression with side effects.
+ * @note The macro evaluates its argument more than once only through field access; pass an error
+ * object, not an expression with side effects.
  */
 #define CHECK_ERROR(error_)                 \
     do                                      \
@@ -35,6 +38,7 @@
         }                                   \
     }                                       \
     while (0)
+
 /**
  * @brief Runs the complete compiler pipeline and returns a conventional process status.
  */
@@ -68,6 +72,13 @@ int main(int argc, char** argv)
     if (cmd_args.ask_help)
     {
         bfc_cmd_help();
+        ret = EXIT_SUCCESS;
+        goto end;
+    }
+
+    if (cmd_args.ask_version)
+    {
+        printf("%s %s\n", BFC_NAME, BFC_VERSION);
         ret = EXIT_SUCCESS;
         goto end;
     }

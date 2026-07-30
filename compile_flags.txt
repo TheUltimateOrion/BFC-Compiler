@@ -1,6 +1,9 @@
 -Wall
 -Wextra
 -Wpedantic
+-Wconversion
+-Wsign-conversion
+-Werror
 -Wuninitialized
 -Iinclude
 -std=c23
