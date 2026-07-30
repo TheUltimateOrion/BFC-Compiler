@@ -5,23 +5,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-bfc_token_t bfc_make_token(bfc_token_type_t const tok_type, uint32_t const line, uint32_t const col)
-{
-    return (bfc_token_t) {.type = tok_type, .line = line, .col = col};
-}
-
-void bfc_token_stream_destroy(bfc_token_stream_t** ptok_stream)
-{
-    if (!ptok_stream || !*ptok_stream)
-    {
-        return;
-    }
-
-    free((*ptok_stream)->tokens);
-    free(*ptok_stream);
-
-    *ptok_stream = nullptr;
-}
+#include "bfc_memory.h"
 
 bfc_error_t bfc_lex(
     bfc_token_stream_t**       token_stream,
@@ -33,7 +17,9 @@ bfc_error_t bfc_lex(
 
     *token_stream = nullptr;
 
-    bfc_token_stream_t* tok_stream = calloc(1, sizeof(*tok_stream));
+    bfc_token_stream_t* tok_stream = nullptr;
+    tok_stream                     = BFC_CALLOC_ARRAY(tok_stream, 1);
+
     if (!tok_stream)
     {
         goto end;
@@ -47,7 +33,7 @@ bfc_error_t bfc_lex(
         goto end;
     }
 
-    tok_stream->tokens = malloc(program->file_size * sizeof(*tok_stream->tokens));
+    tok_stream->tokens = BFC_MALLOC_ARRAY(tok_stream->tokens, program->file_size);
     if (!tok_stream->tokens)
     {
         goto end;
@@ -113,8 +99,7 @@ bfc_error_t bfc_lex(
 
     if (token_list_size > 0)
     {
-        bfc_token_t* tmp
-            = realloc(tok_stream->tokens, token_list_size * sizeof(*tok_stream->tokens));
+        bfc_token_t* tmp = BFC_REALLOC_ARRAY(tok_stream->tokens, token_list_size);
 
         if (tmp)
         {

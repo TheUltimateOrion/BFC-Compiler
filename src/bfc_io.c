@@ -6,13 +6,16 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "bfc_memory.h"
+
 bfc_error_t bfc_program_create(bfc_program_t** program, char const* file_path)
 {
     FILE* file_handle;
 
     if ((file_handle = fopen(file_path, "rb")))
     {
-        bfc_program_t* prog = calloc(1, sizeof(*prog));
+        bfc_program_t* prog = nullptr;
+        prog                = BFC_CALLOC_ARRAY(prog, 1);
         if (!prog)
         {
             fclose(file_handle);

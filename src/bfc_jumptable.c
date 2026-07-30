@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "bfc_memory.h"
+
 bfc_error_t bfc_parse_jump_table(int64_t** jump_table, bfc_token_stream_t const* const tok_stream)
 {
     *jump_table = nullptr;
@@ -20,7 +22,9 @@ bfc_error_t bfc_parse_jump_table(int64_t** jump_table, bfc_token_stream_t const*
 
     bfc_token_t const* toks = tok_stream->tokens;
 
-    int64_t* jtable = malloc(n * sizeof(*jtable));
+    int64_t* jtable = nullptr;
+    jtable          = BFC_MALLOC_ARRAY(jtable, n);
+
     if (!jtable)
     {
         return BFC_ERR_ALLOC;
@@ -31,7 +35,8 @@ bfc_error_t bfc_parse_jump_table(int64_t** jump_table, bfc_token_stream_t const*
         jtable[i] = -1;
     }
 
-    size_t* stack = malloc(n * sizeof(*stack));
+    size_t* stack = nullptr;
+    stack         = BFC_MALLOC_ARRAY(stack, n);
     if (!stack)
     {
         free(jtable);

@@ -1,10 +1,21 @@
 #include "bfc_ir.h"
-#include "bfc_error.h"
 
 #include <stdckdint.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
+
+#include "bfc_config.h"
+#include "bfc_error.h"
+#include "bfc_memory.h"
+
+typedef struct
+{
+    bfc_ir_block_t** blocks;
+
+    size_t length;
+    size_t capacity;
+} bfc_ir_stack_t;
 
 bfc_ir_instr_t bfc_ir_make_imm_instr(bfc_ir_token_type_t const ir_token_type, int64_t const imm)
 {
@@ -27,17 +38,17 @@ bfc_error_t bfc_ir_create(bfc_ir_block_t** root_block, bfc_token_stream_t const*
     *root_block     = nullptr;
 
     bfc_ir_stack_t stack = (bfc_ir_stack_t) {
-        .capacity = 5,
+        .capacity = BFC_INITIAL_IR_STACK_CAPACITY,
         .length   = 0,
     };
 
-    stack.blocks = calloc(stack.capacity, sizeof(*stack.blocks));
+    stack.blocks = BFC_CALLOC_ARRAY(stack.blocks, stack.capacity);
     if (!stack.blocks)
     {
         goto end;
     }
 
-    stack.blocks[stack.length] = calloc(1, sizeof(*stack.blocks[stack.length]));
+    stack.blocks[stack.length] = BFC_CALLOC_ARRAY(stack.blocks[stack.length], 1);
     if (!stack.blocks[stack.length])
     {
         goto end;
@@ -45,10 +56,10 @@ bfc_error_t bfc_ir_create(bfc_ir_block_t** root_block, bfc_token_stream_t const*
 
     bfc_ir_block_t* current_block = stack.blocks[stack.length++];
     current_block->instr          = nullptr;
-    current_block->capacity       = 10;
+    current_block->capacity       = BFC_INITIAL_IR_CAPACITY;
     current_block->length         = 0;
 
-    current_block->instr = malloc(current_block->capacity * sizeof(*current_block->instr));
+    current_block->instr = BFC_MALLOC_ARRAY(current_block->instr, current_block->capacity);
     if (!current_block->instr)
     {
         goto end;
@@ -66,14 +77,7 @@ bfc_error_t bfc_ir_create(bfc_ir_block_t** root_block, bfc_token_stream_t const*
                 goto end;
             }
 
-            size_t allocation_size;
-
-            if (ckd_mul(&allocation_size, new_capacity, sizeof(*stack.blocks)))
-            {
-                goto end;
-            }
-
-            bfc_ir_block_t** tmp = realloc(stack.blocks, allocation_size);
+            bfc_ir_block_t** tmp = BFC_REALLOC_ARRAY(stack.blocks, new_capacity);
 
             if (!tmp)
             {
@@ -93,14 +97,7 @@ bfc_error_t bfc_ir_create(bfc_ir_block_t** root_block, bfc_token_stream_t const*
                 goto end;
             }
 
-            size_t allocation_size;
-
-            if (ckd_mul(&allocation_size, new_capacity, sizeof(*current_block->instr)))
-            {
-                goto end;
-            }
-
-            bfc_ir_instr_t* tmp = realloc(current_block->instr, allocation_size);
+            bfc_ir_instr_t* tmp = BFC_REALLOC_ARRAY(current_block->instr, new_capacity);
 
             if (!tmp)
             {
@@ -144,9 +141,12 @@ bfc_error_t bfc_ir_create(bfc_ir_block_t** root_block, bfc_token_stream_t const*
             break;
 
             case TT_LOOP_START: {
+                bfc_ir_block_t* loop_body = nullptr;
+                loop_body                 = BFC_CALLOC_ARRAY(loop_body, 1);
+
                 bfc_ir_instr_t loop_instr = (bfc_ir_instr_t) {
                     .op  = IR_LOOP,
-                    .val = {.body = calloc(1, sizeof(bfc_ir_block_t))},
+                    .val = {.body = loop_body},
                 };
 
                 if (!loop_instr.val.body)
@@ -159,11 +159,11 @@ bfc_error_t bfc_ir_create(bfc_ir_block_t** root_block, bfc_token_stream_t const*
                 stack.blocks[stack.length] = loop_instr.val.body;
 
                 current_block           = stack.blocks[stack.length++];
-                current_block->capacity = 10;
+                current_block->capacity = BFC_INITIAL_IR_CAPACITY;
                 current_block->length   = 0;
 
                 current_block->instr
-                    = malloc(current_block->capacity * sizeof(*current_block->instr));
+                    = BFC_MALLOC_ARRAY(current_block->instr, current_block->capacity);
 
                 if (!current_block->instr)
                 {
@@ -211,7 +211,8 @@ bfc_error_t bfc_ir_optimize_rep(bfc_ir_block_t** ir_block)
 
     bfc_error_t err = BFC_ERR_ALLOC;
 
-    bfc_ir_block_t* optimized_block = calloc(1, sizeof(*optimized_block));
+    bfc_ir_block_t* optimized_block = nullptr;
+    optimized_block                 = BFC_CALLOC_ARRAY(optimized_block, 1);
 
     if (!optimized_block)
     {
@@ -220,7 +221,7 @@ bfc_error_t bfc_ir_optimize_rep(bfc_ir_block_t** ir_block)
 
     optimized_block->capacity = (*ir_block)->capacity;
 
-    optimized_block->instr = malloc(optimized_block->capacity * sizeof(*optimized_block->instr));
+    optimized_block->instr = BFC_MALLOC_ARRAY(optimized_block->instr, optimized_block->capacity);
 
     if (!optimized_block->instr)
     {

@@ -38,4 +38,6 @@ typedef struct
 bfc_token_t
 bfc_make_token(bfc_token_type_t const tok_type, uint32_t const line, uint32_t const col);
 
+void bfc_token_stream_destroy(bfc_token_stream_t** ptok_stream);
+
 #endif  // BFC_TOKEN_H

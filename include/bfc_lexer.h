@@ -13,6 +13,4 @@ bfc_error_t bfc_lex(
     bfc_args_t const           cmd_args
 );
 
-void bfc_token_stream_destroy(bfc_token_stream_t** ptok_stream);
-
 #endif  // BFC_LEXER_H

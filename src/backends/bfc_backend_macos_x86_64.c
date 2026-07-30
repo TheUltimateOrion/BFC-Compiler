@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-static constexpr size_t BFC_TAPE_SIZE = 30000;
+#include "bfc_config.h"
 
 [[gnu::nonnull(1)]]
 static bfc_error_t emit_load_u64(bfc_asm_t* asm_prog, uint64_t value)

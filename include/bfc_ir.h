@@ -38,14 +38,6 @@ struct bfc_ir_block
     size_t capacity;
 };
 
-typedef struct
-{
-    bfc_ir_block_t** blocks;
-
-    size_t length;
-    size_t capacity;
-} bfc_ir_stack_t;
-
 [[nodiscard, gnu::const]]
 bfc_ir_instr_t bfc_ir_make_imm_instr(bfc_ir_token_type_t const ir_token_type, int64_t const imm);
 

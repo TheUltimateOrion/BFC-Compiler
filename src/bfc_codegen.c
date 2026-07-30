@@ -7,73 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "bfc_common.h"
-
-static const bfc_target_entry_t BFC_TARGETS[] = {
-    {
-        .name = "aarch64-apple-darwin",
-        .target = {
-            .arch = BFC_ARCH_AARCH64,
-            .os   = BFC_OS_MACOS,
-        },
-    },
-    {
-        .name = "x86_64-apple-darwin",
-        .target = {
-            .arch = BFC_ARCH_X86_64,
-            .os   = BFC_OS_MACOS,
-        },
-    },
-    {
-        .name = "aarch64-unknown-linux-gnu",
-        .target = {
-            .arch = BFC_ARCH_AARCH64,
-            .os   = BFC_OS_LINUX,
-        },
-    },
-    {
-        .name = "x86_64-unknown-linux-gnu",
-        .target = {
-            .arch = BFC_ARCH_X86_64,
-            .os   = BFC_OS_LINUX,
-        },
-    },
-    {
-        .name = "aarch64-pc-windows-msvc",
-        .target = {
-            .arch = BFC_ARCH_AARCH64,
-            .os   = BFC_OS_WINDOWS,
-        },
-    },
-    {
-        .name = "x86_64-pc-windows-msvc",
-        .target = {
-            .arch = BFC_ARCH_X86_64,
-            .os   = BFC_OS_WINDOWS,
-        },
-    },
-    {
-        .name = "i386-pc-windows-msvc",
-        .target = {
-            .arch = BFC_ARCH_I386,
-            .os   = BFC_OS_WINDOWS,
-        },
-    },
-};
-
-bfc_error_t bfc_target_parse(bfc_target_t* target, const char* triple)
-{
-    for (size_t i = 0; i < BFC_ARRAY_LENGTH(BFC_TARGETS); ++i)
-    {
-        if (strcmp(triple, BFC_TARGETS[i].name) == 0)
-        {
-            *target = BFC_TARGETS[i].target;
-            return BFC_ERR_OK;
-        }
-    }
-
-    return bfc_make_error(ERR_ARGS, "Unknown or unsupported target triple");
-}
+#include "bfc_config.h"
+#include "bfc_memory.h"
 
 [[gnu::pure]]
 static const bfc_backend_t* bfc_backend_select(bfc_target_t target)
@@ -241,14 +176,15 @@ bfc_error_t bfc_codegen(bfc_asm_t** out_asm, const bfc_ir_block_t* ir_block, bfc
         return bfc_make_error(ERR_ARGS, "No backend is available for the requested target");
     }
 
-    bfc_asm_t* asm_prog = calloc(1, sizeof(*asm_prog));
+    bfc_asm_t* asm_prog = nullptr;
+    asm_prog            = BFC_CALLOC_ARRAY(asm_prog, 1);
 
     if (!asm_prog)
     {
         return BFC_ERR_ALLOC;
     }
 
-    asm_prog->capacity = 4096;
+    asm_prog->capacity = BFC_INITIAL_ASM_CAPACITY;
     asm_prog->backend  = backend;
     asm_prog->buffer   = malloc(asm_prog->capacity);
 
