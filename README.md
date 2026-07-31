@@ -1,5 +1,7 @@
 # BFC Compiler
 
+[Architecture](docs/architecture.md) · [Backend guide](docs/backends.md) · [CLI reference](docs/cli.md)
+
 BFC is a Brainfuck compiler written in C23. It parses Brainfuck source code, builds and optimizes an intermediate representation, and emits target-specific assembly.
 
 The project is intentionally small and self-contained. It uses only the C standard library and platform toolchains; no third-party runtime libraries are required.

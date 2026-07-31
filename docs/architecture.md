@@ -1,5 +1,27 @@
 # bfc Architecture
 
+[Project README](../README.md) · [Architecture](architecture.md) · [Backend guide](backends.md) · [CLI reference](cli.md)
+
+## Table of contents
+
+- [Purpose](#purpose)
+- [Compilation pipeline](#compilation-pipeline)
+- [Entry point](#entry-point)
+- [Module responsibilities](#module-responsibilities)
+  - [`bfc_cli`](#bfc_cli)
+  - [`bfc_io`](#bfc_io)
+  - [`bfc_token` and `bfc_lexer`](#bfc_token-and-bfc_lexer)
+  - [`bfc_jumptable`](#bfc_jumptable)
+  - [`bfc_ir`](#bfc_ir)
+  - [`bfc_target`](#bfc_target)
+  - [`bfc_codegen`](#bfc_codegen)
+  - [Backend modules](#backend-modules)
+  - [`bfc_error`](#bfc_error)
+- [Ownership model](#ownership-model)
+- [Assembly buffer](#assembly-buffer)
+- [Loop generation](#loop-generation)
+- [Important invariants](#important-invariants)
+
 ## Purpose
 
 `bfc` is a C23 Brainfuck compiler. The current pipeline reads a Brainfuck source file, validates and tokenizes it, builds and optimizes a nested IR, selects a target-specific backend, and emits assembly text.

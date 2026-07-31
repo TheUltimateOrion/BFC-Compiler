@@ -1,5 +1,7 @@
 # bfc Command-Line Interface
 
+[Project README](../README.md) · [Architecture](architecture.md) · [Backend guide](backends.md) · [CLI reference](cli.md)
+
 ## Synopsis
 
 ```text

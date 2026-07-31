@@ -5,5 +5,8 @@
 -Wsign-conversion
 -Werror
 -Wuninitialized
+-Wshadow
+-Wstrict-prototypes
+-Wvla
 -Iinclude
 -std=c23

@@ -35,6 +35,9 @@ COMMON_CFLAGS := \
 	-Wall \
 	-Wconversion \
 	-Wsign-conversion \
+	-Wshadow \
+	-Wstrict-prototypes \
+	-Wvla \
 	-Werror
 
 ifeq ($(CONFIG),release)
@@ -43,9 +46,9 @@ ifeq ($(CONFIG),release)
 else ifeq ($(CONFIG),debug)
 	CFLAGS := $(COMMON_CFLAGS) \
 		-Wconditional-uninitialized \
-		-g \
+		-g3 \
 		-O0 \
-		-fsanitize=address \
+		-fsanitize=address,undefined \
 		-fno-omit-frame-pointer
 
 	LDFLAGS := -fsanitize=address
