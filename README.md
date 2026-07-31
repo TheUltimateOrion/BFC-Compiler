@@ -81,6 +81,41 @@ Clean build output:
 make clean
 ```
 
+## Automated builds
+
+The repository includes a GitHub Actions workflow at:
+
+```text
+.github/workflows/build.yml
+```
+
+The workflow builds release binaries on native GitHub-hosted runners for:
+
+| Platform | Architecture |
+|---|---|
+| Linux | x86-64 |
+| Linux | AArch64 |
+| macOS | x86-64 |
+| macOS | AArch64 |
+| Windows | x86-64 |
+| Windows | ARM64 |
+
+The workflow runs when:
+
+- a commit is pushed to `main`
+- a tag matching `v*` is pushed
+- it is started manually from the repository's **Actions** tab
+
+Each successful job uploads a packaged build artifact containing the compiler
+binary, `LICENSE`, and `VERSION`. Workflow artifacts are retained for 14 days.
+
+The workflow builds the `bfc` compiler executable for each host platform. This
+is separate from code-generation backend support. A Linux or Windows build of
+`bfc` does not imply that BFC can emit Linux or Windows assembly; only the
+targets listed as implemented under [Supported target triples](#supported-target-triples)
+are currently usable for code generation.
+
+
 ## Usage
 
 ```text
@@ -216,6 +251,9 @@ The generated HTML is not committed to the repository.
 
 ```text
 .
+├── .github/
+│   └── workflows/
+│       └── build.yml
 ├── docs/
 ├── include/
 ├── src/

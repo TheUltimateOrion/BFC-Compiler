@@ -1,0 +1,149 @@
+name: Cross-platform build
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux x86-64
+            runner: ubuntu-24.04
+            platform: unix
+            archive: bfc-linux-x86_64.tar.gz
+
+          - name: Linux AArch64
+            runner: ubuntu-24.04-arm
+            platform: unix
+            archive: bfc-linux-aarch64.tar.gz
+
+          - name: macOS x86-64
+            runner: macos-15-intel
+            platform: unix
+            archive: bfc-macos-x86_64.tar.gz
+
+          - name: macOS AArch64
+            runner: macos-15
+            platform: unix
+            archive: bfc-macos-aarch64.tar.gz
+
+          - name: Windows x86-64
+            runner: windows-2025
+            platform: windows
+            archive: bfc-windows-x86_64.zip
+
+          - name: Windows ARM64
+            runner: windows-11-arm
+            platform: windows
+            archive: bfc-windows-arm64.zip
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Show build environment
+        shell: bash
+        run: |
+          echo "Runner OS:   $RUNNER_OS"
+          echo "Runner arch: $RUNNER_ARCH"
+
+      - name: Build release compiler
+        if: matrix.platform == 'unix'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          clang --version
+          make clean
+          make release CC=clang
+
+      - name: Package Unix build
+        if: matrix.platform == 'unix'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p dist/package
+          cp build/release/bfc dist/package/bfc
+          cp LICENSE VERSION dist/package/
+          tar -C dist/package -czf "dist/${{ matrix.archive }}" bfc LICENSE VERSION
+
+      - name: Build release compiler
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          clang --version
+
+          New-Item -ItemType Directory -Force build\release | Out-Null
+          New-Item -ItemType Directory -Force dist\package | Out-Null
+
+          $version = (Get-Content VERSION -Raw).Trim()
+          $versionHeader = Join-Path $env:RUNNER_TEMP "bfc_ci_version.h"
+
+          Set-Content `
+            -Path $versionHeader `
+            -Encoding ascii `
+            -Value "#define BFC_VERSION `"$version`""
+
+          $sources = Get-ChildItem `
+            -Path src `
+            -Recurse `
+            -Filter *.c |
+            ForEach-Object { $_.FullName }
+
+          $arguments = @(
+            "-std=c23"
+            "-Iinclude"
+            "-Wall"
+            "-Wextra"
+            "-Wpedantic"
+            "-Wuninitialized"
+            "-O3"
+            "-DNDEBUG"
+            "-include"
+            $versionHeader
+          ) + $sources + @(
+            "-o"
+            "build\release\bfc.exe"
+          )
+
+          & clang @arguments
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Clang failed with exit code $LASTEXITCODE"
+          }
+
+          Copy-Item build\release\bfc.exe dist\package\bfc.exe
+          Copy-Item LICENSE dist\package\LICENSE
+          Copy-Item VERSION dist\package\VERSION
+
+          Compress-Archive `
+            -Path dist\package\* `
+            -DestinationPath "dist\${{ matrix.archive }}" `
+            -Force
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          path: dist/${{ matrix.archive }}
+          if-no-files-found: error
+          retention-days: 14
+          archive: false
