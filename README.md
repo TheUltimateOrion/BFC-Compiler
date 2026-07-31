@@ -1,6 +1,6 @@
 # BFC Compiler
 
-[Architecture](docs/architecture.md) · [Backend guide](docs/backends.md) · [CLI reference](docs/cli.md)
+[Architecture](docs/architecture.md) · [Backend guide](docs/backends.md) · [CLI reference](docs/cli.md) · [API documentation](https://TheUltimateOrion.github.io/BFC-Compiler/)
 
 BFC is a Brainfuck compiler written in C23. It parses Brainfuck source code, builds and optimizes an intermediate representation, and emits target-specific assembly.
 
@@ -253,7 +253,8 @@ The generated HTML is not committed to the repository.
 .
 ├── .github/
 │   └── workflows/
-│       └── build.yml
+│       ├── build.yml
+│       └── docs.yml
 ├── docs/
 ├── include/
 ├── src/

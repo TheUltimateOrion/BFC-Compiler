@@ -1,6 +1,6 @@
 # bfc Backend Guide
 
-[Project README](../README.md) · [Architecture](architecture.md) · [CLI reference](cli.md)
+[Project README](../README.md) · [Architecture](architecture.md) · [CLI reference](cli.md) · [API documentation](https://TheUltimateOrion.github.io/BFC-Compiler/)
 
 ## Table of contents
 

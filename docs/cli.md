@@ -1,6 +1,6 @@
 # bfc Command-Line Interface
 
-[Project README](../README.md) · [Architecture](architecture.md) · [Backend guide](backends.md)
+[Project README](../README.md) · [Architecture](architecture.md) · [Backend guide](backends.md) · [API documentation](https://TheUltimateOrion.github.io/BFC-Compiler/)
 
 ## Synopsis
 
