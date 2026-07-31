@@ -56,6 +56,7 @@ else
 	$(error Unknown CONFIG '$(CONFIG)'; expected debug or release)
 endif
 
+LDFLAGS += -lm
 
 # Targets
 
