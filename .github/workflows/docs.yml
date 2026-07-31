@@ -32,10 +32,27 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v7
 
-      - name: Install Doxygen
+      - name: Install Doxygen 1.17.0
         run: |
+          set -euxo pipefail
+
           sudo apt-get update
-          sudo apt-get install --yes doxygen graphviz
+          sudo apt-get install --yes graphviz
+
+          curl --fail --location --remote-name \
+            https://www.doxygen.nl/files/doxygen-1.17.0.linux.bin.tar.gz
+
+          echo \
+            "75419ef4f446fc1c24ef12514b574e66e898ee6f527c6ae2ad84f91a905823c2  doxygen-1.17.0.linux.bin.tar.gz" \
+            | sha256sum --check -
+
+          tar -xzf doxygen-1.17.0.linux.bin.tar.gz
+
+          sudo install \
+            doxygen-1.17.0/bin/doxygen \
+            /usr/local/bin/doxygen
+
+          doxygen --version
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
