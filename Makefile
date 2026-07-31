@@ -14,12 +14,13 @@ CLANG_TIDY    ?= clang-tidy
 
 CONFIG_DIR    := $(BUILD_ROOT)/$(CONFIG)
 OBJ_DIR       := $(CONFIG_DIR)/obj
+DEP_DIR       := $(CONFIG_DIR)/dep
 TARGET        := $(CONFIG_DIR)/bfc
 
 SRCS          := $(sort $(shell find $(SRC_DIR) -name '*.c'))
 HEADERS       := $(sort $(shell find $(INCLUDE_DIR) -name '*.h'))
 OBJS          := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRCS))
-DEPS          := $(OBJS:.o=.d)
+DEPS          := $(patsubst $(SRC_DIR)/%.c,$(DEP_DIR)/%.d,$(SRCS))
 FORMAT_FILES  := $(SRCS) $(HEADERS)
 
 VERSION_FILE  := VERSION
@@ -117,8 +118,11 @@ $(TARGET): $(OBJS)
 	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
-	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
+	@mkdir -p $(dir $@) $(dir $(DEP_DIR)/$*.d)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(DEPFLAGS) \
+		-MF $(DEP_DIR)/$*.d \
+		-MT $@ \
+		-c $< -o $@
 
 $(OBJS): $(VERSION_FILE)
 
