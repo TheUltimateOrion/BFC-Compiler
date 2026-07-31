@@ -1,6 +1,6 @@
 # bfc Architecture
 
-[Project README](../README.md) · [Architecture](architecture.md) · [Backend guide](backends.md) · [CLI reference](cli.md)
+[Project README](../README.md) · [Backend guide](backends.md) · [CLI reference](cli.md)
 
 ## Table of contents
 
