@@ -47,6 +47,8 @@ To build BFC:
 Optional:
 
 - Doxygen, for generating HTML documentation
+- clang-format, for `make format` and `make format-check`
+- clang-tidy, for `make tidy`
 
 ## Building
 
@@ -80,6 +82,29 @@ Clean build output:
 ```bash
 make clean
 ```
+
+### Code-quality tools
+
+Format all C sources and headers using `.clang-format`:
+
+```bash
+make format
+```
+
+Check formatting without changing files:
+
+```bash
+make format-check
+```
+
+Run the checks configured in `.clang-tidy`:
+
+```bash
+make tidy
+```
+
+These targets are optional developer tools and are not part of the normal
+compiler build.
 
 ## Automated builds
 
@@ -170,6 +195,25 @@ hello.bf.s
 ./build/debug/bfc --version
 ```
 
+## Example programs
+
+The `examples/` directory contains small Brainfuck programs demonstrating
+compiler behavior:
+
+| File | Behavior |
+|---|---|
+| `hello.bf` | Prints `Hello World!` |
+| `echo.bf` | Echoes input until EOF |
+| `comments.bf` | Demonstrates semicolon line comments |
+| `multiply.bf` | Uses a loop to compute 6 × 7 and prints `*` |
+| `nested_loops.bf` | Uses nested loops to compute and print `A` |
+
+Generate assembly for an example:
+
+```bash
+./build/debug/bfc -S examples/hello.bf -o hello.s
+```
+
 ## Command-line options
 
 | Option | Description |
@@ -256,9 +300,12 @@ The generated HTML is not committed to the repository.
 │       ├── build.yml
 │       └── docs.yml
 ├── docs/
+├── examples/
 ├── include/
 ├── src/
 ├── tests/
+├── .clang-format
+├── .clang-tidy
 ├── Doxyfile
 ├── LICENSE
 ├── Makefile
