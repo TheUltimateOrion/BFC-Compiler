@@ -1,0 +1,231 @@
+name: Publish release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate release tag
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Validate tag and VERSION
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tag="${GITHUB_REF_NAME}"
+          version="$(tr -d '[:space:]' < VERSION)"
+
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "error: release tag is not a valid version tag: $tag" >&2
+            exit 1
+          fi
+
+          if [[ "$tag" != "v$version" ]]; then
+            echo "error: tag $tag does not match VERSION ($version)" >&2
+            exit 1
+          fi
+
+  build:
+    name: ${{ matrix.name }}
+    needs: validate
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Release Linux x86-64
+            runner: ubuntu-24.04
+            platform: unix
+            artifact: release-linux-x86_64
+            archive: bfc-linux-x86_64.tar.gz
+
+          - name: Release Linux AArch64
+            runner: ubuntu-24.04-arm
+            platform: unix
+            artifact: release-linux-aarch64
+            archive: bfc-linux-aarch64.tar.gz
+
+          - name: Release macOS x86-64
+            runner: macos-15-intel
+            platform: unix
+            artifact: release-macos-x86_64
+            archive: bfc-macos-x86_64.tar.gz
+
+          - name: Release macOS AArch64
+            runner: macos-15
+            platform: unix
+            artifact: release-macos-aarch64
+            archive: bfc-macos-aarch64.tar.gz
+
+          - name: Release Windows x86-64
+            runner: windows-2025
+            platform: windows
+            artifact: release-windows-x86_64
+            archive: bfc-windows-x86_64.zip
+
+          - name: Release Windows ARM64
+            runner: windows-11-arm
+            platform: windows
+            artifact: release-windows-arm64
+            archive: bfc-windows-arm64.zip
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Build release compiler
+        if: matrix.platform == 'unix'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          clang --version
+          make clean
+          make release CC=clang
+
+      - name: Package Unix release
+        if: matrix.platform == 'unix'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p dist/package
+          cp build/release/bfc dist/package/bfc
+          cp LICENSE VERSION README.md dist/package/
+          tar -C dist/package -czf "dist/${{ matrix.archive }}" \
+            bfc LICENSE VERSION README.md
+
+      - name: Build and package Windows release
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          clang --version
+
+          New-Item -ItemType Directory -Force build\release | Out-Null
+          New-Item -ItemType Directory -Force dist\package | Out-Null
+
+          $version = (Get-Content VERSION -Raw).Trim()
+          $versionHeader = Join-Path $env:RUNNER_TEMP "bfc_ci_version.h"
+
+          Set-Content `
+            -Path $versionHeader `
+            -Encoding ascii `
+            -Value "#define BFC_VERSION `"$version`""
+
+          $sources = Get-ChildItem `
+            -Path src `
+            -Recurse `
+            -Filter *.c |
+            ForEach-Object { $_.FullName }
+
+          $arguments = @(
+            "-std=c23"
+            "-Iinclude"
+            "-Wall"
+            "-Wextra"
+            "-Wpedantic"
+            "-Wuninitialized"
+            "-O3"
+            "-DNDEBUG"
+            "-include"
+            $versionHeader
+          ) + $sources + @(
+            "-o"
+            "build\release\bfc.exe"
+          )
+
+          & clang @arguments
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Clang failed with exit code $LASTEXITCODE"
+          }
+
+          Copy-Item build\release\bfc.exe dist\package\bfc.exe
+          Copy-Item LICENSE dist\package\LICENSE
+          Copy-Item VERSION dist\package\VERSION
+          Copy-Item README.md dist\package\README.md
+
+          Compress-Archive `
+            -Path dist\package\* `
+            -DestinationPath "dist\${{ matrix.archive }}" `
+            -Force
+
+      - name: Upload release package
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/${{ matrix.archive }}
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: Create GitHub release
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Download release packages
+        uses: actions/download-artifact@v8
+        with:
+          pattern: release-*
+          path: dist
+          merge-multiple: true
+
+      - name: Verify assets and generate checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mapfile -t assets < <(
+            find dist -maxdepth 1 -type f -name 'bfc-*' -print | sort
+          )
+
+          if [[ "${#assets[@]}" -ne 6 ]]; then
+            echo "error: expected 6 release packages, found ${#assets[@]}" >&2
+            printf 'found: %s\n' "${assets[@]}" >&2
+            exit 1
+          fi
+
+          (
+            cd dist
+            sha256sum bfc-* > SHA256SUMS
+            sha256sum --check SHA256SUMS
+          )
+
+      - name: Create or update GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          if gh release view "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" dist/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" dist/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --verify-tag \
+              --title "BFC $GITHUB_REF_NAME" \
+              --generate-notes
+          fi
