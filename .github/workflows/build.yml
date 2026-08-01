@@ -4,8 +4,9 @@ on:
   push:
     branches:
       - main
-    tags:
-      - "v*"
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -81,10 +82,11 @@ jobs:
           set -euxo pipefail
           mkdir -p dist/package
           cp build/release/bfc dist/package/bfc
-          cp LICENSE VERSION dist/package/
-          tar -C dist/package -czf "dist/${{ matrix.archive }}" bfc LICENSE VERSION
+          cp LICENSE VERSION README.md dist/package/
+          tar -C dist/package -czf "dist/${{ matrix.archive }}" \
+            bfc LICENSE VERSION README.md
 
-      - name: Build release compiler
+      - name: Build and package Windows compiler
         if: matrix.platform == 'windows'
         shell: pwsh
         run: |
@@ -134,6 +136,7 @@ jobs:
           Copy-Item build\release\bfc.exe dist\package\bfc.exe
           Copy-Item LICENSE dist\package\LICENSE
           Copy-Item VERSION dist\package\VERSION
+          Copy-Item README.md dist\package\README.md
 
           Compress-Archive `
             -Path dist\package\* `
