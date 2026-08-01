@@ -298,7 +298,8 @@ The generated HTML is not committed to the repository.
 ├── .github/
 │   └── workflows/
 │       ├── build.yml
-│       └── docs.yml
+│       ├── docs.yml
+│       └── release.yml
 ├── docs/
 ├── examples/
 ├── include/

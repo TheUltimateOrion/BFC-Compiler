@@ -1,24 +1,48 @@
-name: Cross-platform build
+name: Publish release
 
 on:
   push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
-  workflow_dispatch:
+    tags:
+      - "v*"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
-  group: build-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
+  validate:
+    name: Validate release tag
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Validate tag and VERSION
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tag="${GITHUB_REF_NAME}"
+          version="$(tr -d '[:space:]' < VERSION)"
+
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "error: release tag is not a valid version tag: $tag" >&2
+            exit 1
+          fi
+
+          if [[ "$tag" != "v$version" ]]; then
+            echo "error: tag $tag does not match VERSION ($version)" >&2
+            exit 1
+          fi
+
   build:
     name: ${{ matrix.name }}
+    needs: validate
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 20
 
@@ -26,45 +50,45 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: Linux x86-64
+          - name: Release Linux x86-64
             runner: ubuntu-24.04
             platform: unix
+            artifact: release-linux-x86_64
             archive: bfc-linux-x86_64.tar.gz
 
-          - name: Linux AArch64
+          - name: Release Linux AArch64
             runner: ubuntu-24.04-arm
             platform: unix
+            artifact: release-linux-aarch64
             archive: bfc-linux-aarch64.tar.gz
 
-          - name: macOS x86-64
+          - name: Release macOS x86-64
             runner: macos-15-intel
             platform: unix
+            artifact: release-macos-x86_64
             archive: bfc-macos-x86_64.tar.gz
 
-          - name: macOS AArch64
+          - name: Release macOS AArch64
             runner: macos-15
             platform: unix
+            artifact: release-macos-aarch64
             archive: bfc-macos-aarch64.tar.gz
 
-          - name: Windows x86-64
+          - name: Release Windows x86-64
             runner: windows-2025
             platform: windows
+            artifact: release-windows-x86_64
             archive: bfc-windows-x86_64.zip
 
-          - name: Windows ARM64
+          - name: Release Windows ARM64
             runner: windows-11-arm
             platform: windows
+            artifact: release-windows-arm64
             archive: bfc-windows-arm64.zip
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
-
-      - name: Show build environment
-        shell: bash
-        run: |
-          echo "Runner OS:   $RUNNER_OS"
-          echo "Runner arch: $RUNNER_ARCH"
 
       - name: Build release compiler
         if: matrix.platform == 'unix'
@@ -75,7 +99,7 @@ jobs:
           make clean
           make release CC=clang
 
-      - name: Package Unix build
+      - name: Package Unix release
         if: matrix.platform == 'unix'
         shell: bash
         run: |
@@ -86,7 +110,7 @@ jobs:
           tar -C dist/package -czf "dist/${{ matrix.archive }}" \
             bfc LICENSE VERSION README.md
 
-      - name: Build and package Windows compiler
+      - name: Build and package Windows release
         if: matrix.platform == 'windows'
         shell: pwsh
         run: |
@@ -143,10 +167,65 @@ jobs:
             -DestinationPath "dist\${{ matrix.archive }}" `
             -Force
 
-      - name: Upload build artifact
+      - name: Upload release package
         uses: actions/upload-artifact@v7
         with:
+          name: ${{ matrix.artifact }}
           path: dist/${{ matrix.archive }}
           if-no-files-found: error
-          retention-days: 14
-          archive: false
+          retention-days: 7
+
+  release:
+    name: Create GitHub release
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Download release packages
+        uses: actions/download-artifact@v8
+        with:
+          pattern: release-*
+          path: dist
+          merge-multiple: true
+
+      - name: Verify assets and generate checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mapfile -t assets < <(
+            find dist -maxdepth 1 -type f -name 'bfc-*' -print | sort
+          )
+
+          if [[ "${#assets[@]}" -ne 6 ]]; then
+            echo "error: expected 6 release packages, found ${#assets[@]}" >&2
+            printf 'found: %s\n' "${assets[@]}" >&2
+            exit 1
+          fi
+
+          (
+            cd dist
+            sha256sum bfc-* > SHA256SUMS
+            sha256sum --check SHA256SUMS
+          )
+
+      - name: Create or update GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          if gh release view "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" dist/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" dist/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --verify-tag \
+              --title "BFC $GITHUB_REF_NAME" \
+              --generate-notes
+          fi
