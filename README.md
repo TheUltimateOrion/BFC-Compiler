@@ -125,11 +125,13 @@ The workflow builds release binaries on native GitHub-hosted runners for:
 | Windows | x86-64 |
 | Windows | ARM64 |
 
-The workflow runs when:
+The cross-platform build workflow runs when:
 
 - a commit is pushed to `main`
-- a tag matching `v*` is pushed
-- it is started manually from the repository's **Actions** tab
+- a pull request targets `main`
+- it is started manually
+
+Tags matching `v*` trigger the separate release workflow.
 
 Each successful job uploads a packaged build artifact containing the compiler
 binary, `LICENSE`, and `VERSION`. Workflow artifacts are retained for 14 days.
