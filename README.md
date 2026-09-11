@@ -106,6 +106,18 @@ make tidy
 These targets are optional developer tools and are not part of the normal
 compiler build.
 
+### Regression tests
+
+Run the compiler regression tests:
+
+```bash
+make test
+```
+
+The test runner checks stable generated assembly for `tests/hello.bf`, verifies
+that another program produces assembly, and confirms malformed brackets produce
+an error. The same tests run in the Unix jobs of the cross-platform workflow.
+
 ## Automated builds
 
 The repository includes a GitHub Actions workflow at:

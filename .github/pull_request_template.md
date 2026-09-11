@@ -35,12 +35,14 @@
 make clean
 make debug
 make release
+make test
 make format-check
 make tidy
 ```
 
 - [ ] Debug build succeeds
 - [ ] Release build succeeds
+- [ ] Regression tests succeed
 - [ ] Formatting check succeeds
 - [ ] Clang-Tidy succeeds or findings are explained below
 - [ ] Relevant generated assembly was inspected

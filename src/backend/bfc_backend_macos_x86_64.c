@@ -3,7 +3,8 @@
  * @brief macOS x86-64 assembly backend.
  *
  * @details
- * Implements Mach-O symbols, System V-style x86-64 calling conventions used by macOS, and Intel-syntax lowering for all IR operations.
+ * Implements Mach-O symbols, System V-style x86-64 calling conventions used by macOS, and
+ * Intel-syntax lowering for all IR operations.
  */
 #include "bfc_codegen_internal.h"
 

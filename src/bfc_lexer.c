@@ -3,7 +3,8 @@
  * @brief Brainfuck lexer implementation.
  *
  * @details
- * Scans source bytes, tracks one-based positions, applies the optional semicolon-comment extension, and emits tokens.
+ * Scans source bytes, tracks one-based positions, applies the optional semicolon-comment extension,
+ * and emits tokens.
  */
 #include "bfc_lexer.h"
 

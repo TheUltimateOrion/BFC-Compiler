@@ -3,7 +3,8 @@
  * @brief Target-triple parsing and host detection.
  *
  * @details
- * Maps accepted target strings to internal targets and derives the native target from compiler predefined macros.
+ * Maps accepted target strings to internal targets and derives the native target from compiler
+ * predefined macros.
  */
 #include "bfc_target.h"
 
@@ -95,6 +96,7 @@ bfc_error_t bfc_target_parse(bfc_target_t* target, const char* triple)
 
     return bfc_make_error(ERR_ARGS, "Unknown or unsupported target triple");
 }
+
 /**
  * @brief Derives the native target from compiler predefined macros.
  */

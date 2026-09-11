@@ -16,6 +16,7 @@ bfc_token_t bfc_make_token(bfc_token_type_t const tok_type, uint32_t const line,
 {
     return (bfc_token_t) {.type = tok_type, .line = line, .col = col};
 }
+
 /**
  * @brief Releases the owned token array and stream object, then nulls the caller pointer.
  */

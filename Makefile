@@ -22,6 +22,7 @@ HEADERS       := $(sort $(shell find $(INCLUDE_DIR) -name '*.h'))
 OBJS          := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRCS))
 DEPS          := $(patsubst $(SRC_DIR)/%.c,$(DEP_DIR)/%.d,$(SRCS))
 FORMAT_FILES  := $(SRCS) $(HEADERS)
+FORMAT_FILES  += $(wildcard bfc_onefile.c)
 
 VERSION_FILE  := VERSION
 VERSION       := $(strip $(shell cat $(VERSION_FILE)))
@@ -66,7 +67,7 @@ LDLIBS += -lm
 
 # Targets
 
-.PHONY: all debug release clean docs clean-docs format format-check tidy
+.PHONY: all debug release test clean docs clean-docs format format-check tidy
 
 all: $(TARGET)
 
@@ -75,6 +76,10 @@ debug:
 
 release:
 	$(MAKE) CONFIG=release all
+
+test:
+	$(MAKE) CONFIG=debug all
+	sh tests/run.sh $(TARGET)
 
 docs:
 	@command -v $(DOXYGEN) >/dev/null 2>&1 || { \

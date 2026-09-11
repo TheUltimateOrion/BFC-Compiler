@@ -3,7 +3,8 @@
  * @brief Compiler error values and diagnostics.
  *
  * @details
- * Defines error codes, formatted error constructors, source-associated errors, and user-facing diagnostic output.
+ * Defines error codes, formatted error constructors, source-associated errors, and user-facing
+ * diagnostic output.
  */
 #ifndef BFC_ERROR_H
 #define BFC_ERROR_H

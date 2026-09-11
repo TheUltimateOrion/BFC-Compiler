@@ -24,6 +24,7 @@ void* bfc_malloc_array(size_t count, size_t element_size)
 
     return malloc(bytes);
 }
+
 /**
  * @brief Allocates a zero-filled typed array after checked size multiplication.
  */
@@ -39,6 +40,7 @@ void* bfc_calloc_array(size_t count, size_t element_size)
 
     return calloc(1, bytes);
 }
+
 /**
  * @brief Resizes a typed array after checked size multiplication.
  */

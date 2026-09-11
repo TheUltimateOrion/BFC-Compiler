@@ -3,7 +3,8 @@
  * @brief Checked array-allocation helpers.
  *
  * @details
- * Provides overflow-checked allocation functions for typed arrays and convenience macros that infer element size from pointer type.
+ * Provides overflow-checked allocation functions for typed arrays and convenience macros that infer
+ * element size from pointer type.
  */
 #ifndef BFC_MEMORY_H
 #define BFC_MEMORY_H

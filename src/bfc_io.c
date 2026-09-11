@@ -3,7 +3,8 @@
  * @brief Source-file input and line extraction.
  *
  * @details
- * Loads the complete source file, tracks line count, stores the source path, and returns allocated diagnostic lines.
+ * Loads the complete source file, tracks line count, stores the source path, and returns allocated
+ * diagnostic lines.
  */
 #include "bfc_io.h"
 #include "bfc_error.h"
@@ -128,6 +129,7 @@ bfc_error_t bfc_program_create(bfc_program_t** program, char const* file_path)
 
     return bfc_make_errorf(ERR_IO, "No such file or directory: '%s'", file_path);
 }
+
 /**
  * @brief Releases the source path, source bytes, and program object.
  */
@@ -145,6 +147,7 @@ void bfc_program_destroy(bfc_program_t** pprogram)
 
     *pprogram = nullptr;
 }
+
 /**
  * @brief Returns a borrowed pointer to the final path component.
  */
@@ -163,6 +166,7 @@ char const* bfc_program_getname(bfc_program_t const* program)
 
     return name;
 }
+
 /**
  * @brief Copies one requested source line for diagnostic rendering.
  */

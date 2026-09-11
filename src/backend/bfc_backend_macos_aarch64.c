@@ -3,7 +3,8 @@
  * @brief macOS AArch64 assembly backend.
  *
  * @details
- * Implements Mach-O symbols, Apple AArch64 ABI state, and target-specific lowering for all IR operations.
+ * Implements Mach-O symbols, Apple AArch64 ABI state, and target-specific lowering for all IR
+ * operations.
  */
 #include "bfc_codegen_internal.h"
 

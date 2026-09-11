@@ -34,6 +34,7 @@ bfc_error_t bfc_make_errorf(bfc_err_code_t error_code, const char* format, ...)
 
     return err;
 }
+
 /**
  * @brief Builds a formatted error associated with a source token.
  */
@@ -55,6 +56,7 @@ bfc_make_errorf_with_token(bfc_err_code_t error_code, bfc_token_t token, const c
 
     return err;
 }
+
 /**
  * @brief Builds an error by copying a plain message.
  */
@@ -72,6 +74,7 @@ bfc_error_t bfc_make_error(bfc_err_code_t const error_code, char const* msg)
 
     return err;
 }
+
 /**
  * @brief Builds a token-associated error by copying a plain message.
  */
@@ -91,6 +94,7 @@ bfc_make_error_with_token(bfc_err_code_t const error_code, char const* msg, bfc_
 
     return err;
 }
+
 /**
  * @brief Maps an error enumeration value to its symbolic name.
  */
@@ -113,6 +117,7 @@ char const* bfc_get_error_code(bfc_err_code_t const error_code)
         break;
     }
 }
+
 /**
  * @brief Prints a colourized diagnostic and optional source-line context.
  */

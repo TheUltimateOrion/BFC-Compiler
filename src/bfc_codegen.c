@@ -3,7 +3,8 @@
  * @brief Generic IR-to-assembly code generation.
  *
  * @details
- * Selects backends, owns the assembly buffer, recursively lowers loops, dispatches IR instructions, and writes assembly files.
+ * Selects backends, owns the assembly buffer, recursively lowers loops, dispatches IR instructions,
+ * and writes assembly files.
  */
 #include "bfc_codegen_internal.h"
 
@@ -84,6 +85,7 @@ static bfc_error_t bfc_codegen_emit_loop(bfc_asm_t* asm_prog, const bfc_ir_block
 
     return err;
 }
+
 /**
  * @brief Appends null-terminated text while preserving the assembly-buffer invariant.
  */
@@ -131,6 +133,7 @@ bfc_error_t bfc_codegen_emit_text(bfc_asm_t* asm_prog, const char* text)
 
     return BFC_ERR_OK;
 }
+
 /**
  * @brief Dispatches every IR operation through the active backend.
  */
@@ -190,6 +193,7 @@ bfc_error_t bfc_codegen_emitf(bfc_asm_t* asm_prog, const char* format, ...)
 
     return bfc_codegen_emit_text(asm_prog, buffer);
 }
+
 /**
  * @brief Allocates assembly state and orchestrates complete target-specific emission.
  */
@@ -256,6 +260,7 @@ bfc_error_t bfc_codegen(bfc_asm_t** out_asm, const bfc_ir_block_t* ir_block, bfc
     *out_asm = asm_prog;
     return BFC_ERR_OK;
 }
+
 /**
  * @brief Releases generated assembly state and nulls the caller pointer.
  */
@@ -272,6 +277,7 @@ void bfc_asm_destroy(bfc_asm_t** pasm_prog)
 
     *pasm_prog = nullptr;
 }
+
 /**
  * @brief Writes exactly the generated assembly length to a binary-mode file.
  */

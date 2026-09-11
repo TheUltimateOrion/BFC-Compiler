@@ -3,7 +3,8 @@
  * @brief Bracket-matching validation pass.
  *
  * @details
- * Uses a stack of opening-bracket indices to build a bidirectional jump table and produce source-aware bracket errors.
+ * Uses a stack of opening-bracket indices to build a bidirectional jump table and produce
+ * source-aware bracket errors.
  */
 #include "bfc_jumptable.h"
 
@@ -109,6 +110,7 @@ missing_closing_bracket:
 
     return err;
 }
+
 /**
  * @brief Releases the matching-index table and nulls the caller pointer.
  */

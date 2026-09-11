@@ -75,6 +75,13 @@ jobs:
           make clean
           make release CC=clang
 
+      - name: Run regression tests
+        if: matrix.platform == 'unix'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          make test CC=clang
+
       - name: Package Unix build
         if: matrix.platform == 'unix'
         shell: bash
