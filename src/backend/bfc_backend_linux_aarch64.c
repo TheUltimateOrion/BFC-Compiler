@@ -4,15 +4,20 @@
 #include "bfc_config.h"
 
 /**
- * @defgroup linux_aarch64_backend Linux AArch64 backend
- * @internal
- * @{
- * Linux AArch64 ELF assembly backend.
+ * @file bfc_backend_linux_aarch64.c
+ * @brief Linux AArch64 assembly backend.
  *
- * X19 holds the Brainfuck tape pointer across libc calls, while X16/W16 is
- * used as a scratch register for immediates and cell values.
+ * @details
+ * Implements ELF symbols, the AAPCS64 ABI, and GNU AArch64-syntax lowering
+ * for all IR operations. X19 holds the Brainfuck tape pointer across libc
+ * calls, while X16/W16 is used for immediates and cell values.
  */
 
+/**
+ * @brief Materializes a 64-bit unsigned immediate in scratch register `x16`.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t linux_aarch64_emit_load_u64(bfc_asm_t* asm_prog, uint64_t value)
 {
@@ -46,12 +51,22 @@ static bfc_error_t linux_aarch64_emit_load_u64(bfc_asm_t* asm_prog, uint64_t val
     return BFC_ERR_OK;
 }
 
+/**
+ * @brief Emits the ELF text-section directives.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t linux_aarch64_emit_header(bfc_asm_t* asm_prog)
 {
     return bfc_codegen_emit_text(asm_prog, ".text\n.p2align 2\n");
 }
 
+/**
+ * @brief Declares the zero-initialized Brainfuck tape in ELF BSS.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t linux_aarch64_emit_data_section(bfc_asm_t* asm_prog)
 {
@@ -65,6 +80,11 @@ static bfc_error_t linux_aarch64_emit_data_section(bfc_asm_t* asm_prog)
     );
 }
 
+/**
+ * @brief Emits `main`, its aligned stack frame, and the tape address.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t linux_aarch64_emit_symbol(bfc_asm_t* asm_prog)
 {
@@ -83,6 +103,11 @@ static bfc_error_t linux_aarch64_emit_symbol(bfc_asm_t* asm_prog)
     );
 }
 
+/**
+ * @brief Emits the ABI-compliant epilogue and zero process status.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t linux_aarch64_emit_end(bfc_asm_t* asm_prog)
 {
@@ -96,6 +121,11 @@ static bfc_error_t linux_aarch64_emit_end(bfc_asm_t* asm_prog)
     );
 }
 
+/**
+ * @brief Lowers wrapping byte-cell addition.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t linux_aarch64_emit_op_add(bfc_asm_t* asm_prog, int64_t imm)
 {
@@ -115,6 +145,11 @@ static bfc_error_t linux_aarch64_emit_op_add(bfc_asm_t* asm_prog, int64_t imm)
     );
 }
 
+/**
+ * @brief Moves the tape pointer using direct or register materialized immediates.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t linux_aarch64_emit_op_move(bfc_asm_t* asm_prog, int64_t imm)
 {
@@ -146,6 +181,11 @@ static bfc_error_t linux_aarch64_emit_op_move(bfc_asm_t* asm_prog, int64_t imm)
     );
 }
 
+/**
+ * @brief Calls `getchar`, maps EOF to zero, and stores one byte.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t linux_aarch64_emit_op_get(bfc_asm_t* asm_prog)
 {
@@ -157,12 +197,22 @@ static bfc_error_t linux_aarch64_emit_op_get(bfc_asm_t* asm_prog)
     );
 }
 
+/**
+ * @brief Loads the current cell and calls `putchar`.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t linux_aarch64_emit_op_put(bfc_asm_t* asm_prog)
 {
     return bfc_codegen_emit_text(asm_prog, "    ldrb w0, [x19]\n    bl   putchar\n");
 }
 
+/**
+ * @brief Stores a normalized byte value in the current cell.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t linux_aarch64_emit_op_set(bfc_asm_t* asm_prog, int64_t imm)
 {
@@ -181,18 +231,31 @@ static bfc_error_t linux_aarch64_emit_op_set(bfc_asm_t* asm_prog, int64_t imm)
     );
 }
 
+/**
+ * @brief Uses `cbz` to branch when the current cell is zero.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1, 2)]]
 static bfc_error_t linux_aarch64_emit_loop_test_z(bfc_asm_t* asm_prog, const char* label)
 {
     return bfc_codegen_emitf(asm_prog, "    ldrb w16, [x19]\n    cbz  w16, %s\n", label);
 }
 
+/**
+ * @brief Uses `cbnz` to branch when the current cell is nonzero.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1, 2)]]
 static bfc_error_t linux_aarch64_emit_loop_test_nz(bfc_asm_t* asm_prog, const char* label)
 {
     return bfc_codegen_emitf(asm_prog, "    ldrb w16, [x19]\n    cbnz w16, %s\n", label);
 }
 
+/**
+ * @brief Immutable backend descriptor exported to generic code generation.
+ */
 const bfc_backend_t BFC_BACKEND_LINUX_AARCH64 = {
     .target = {
         .arch = BFC_ARCH_AARCH64,
@@ -212,5 +275,3 @@ const bfc_backend_t BFC_BACKEND_LINUX_AARCH64 = {
     .emit_loop_test_z  = linux_aarch64_emit_loop_test_z,
     .emit_loop_test_nz = linux_aarch64_emit_loop_test_nz,
 };
-
-/** @} */

@@ -4,27 +4,42 @@
 #include "bfc_config.h"
 
 /**
- * @defgroup linux_x86_64_backend Linux x86-64 backend
- * @internal
- * @{
- * Linux x86-64 ELF assembly backend in AT&T syntax.
+ * @file bfc_backend_linux_x86_64.c
+ * @brief Linux x86-64 assembly backend.
  *
- * RBX holds the Brainfuck tape pointer across libc calls, while R11 is used
- * as a scratch register for large pointer-movement immediates.
+ * @details
+ * Implements ELF symbols, the System V AMD64 ABI, and AT&T-syntax lowering
+ * for all IR operations. RBX holds the Brainfuck tape pointer across libc
+ * calls, while R11 is used as a scratch register for large pointer offsets.
  */
 
+/**
+ * @brief Materializes a full-width unsigned immediate in scratch register `r11`.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t linux_x86_64_emit_load_u64(bfc_asm_t* asm_prog, uint64_t value)
 {
     return bfc_codegen_emitf(asm_prog, "    movabsq $0x%016" PRIx64 ", %%r11\n", value);
 }
 
+/**
+ * @brief Emits the ELF text-section directives.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t linux_x86_64_emit_header(bfc_asm_t* asm_prog)
 {
     return bfc_codegen_emit_text(asm_prog, ".text\n.p2align 4\n");
 }
 
+/**
+ * @brief Declares the zero-initialized Brainfuck tape in ELF BSS.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t linux_x86_64_emit_data_section(bfc_asm_t* asm_prog)
 {
@@ -38,6 +53,11 @@ static bfc_error_t linux_x86_64_emit_data_section(bfc_asm_t* asm_prog)
     );
 }
 
+/**
+ * @brief Emits `main`, its aligned stack frame, and the tape address.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t linux_x86_64_emit_symbol(bfc_asm_t* asm_prog)
 {
@@ -56,6 +76,11 @@ static bfc_error_t linux_x86_64_emit_symbol(bfc_asm_t* asm_prog)
     );
 }
 
+/**
+ * @brief Emits the ABI-compliant epilogue and zero process status.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t linux_x86_64_emit_end(bfc_asm_t* asm_prog)
 {
@@ -70,6 +95,11 @@ static bfc_error_t linux_x86_64_emit_end(bfc_asm_t* asm_prog)
     );
 }
 
+/**
+ * @brief Lowers wrapping byte-cell addition.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t linux_x86_64_emit_op_add(bfc_asm_t* asm_prog, int64_t imm)
 {
@@ -83,6 +113,11 @@ static bfc_error_t linux_x86_64_emit_op_add(bfc_asm_t* asm_prog, int64_t imm)
     return bfc_codegen_emitf(asm_prog, "    addb $%u, (%%rbx)\n", (unsigned) normalized);
 }
 
+/**
+ * @brief Moves the tape pointer using direct or register materialized immediates.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t linux_x86_64_emit_op_move(bfc_asm_t* asm_prog, int64_t imm)
 {
@@ -113,6 +148,11 @@ static bfc_error_t linux_x86_64_emit_op_move(bfc_asm_t* asm_prog, int64_t imm)
     );
 }
 
+/**
+ * @brief Calls `getchar`, maps EOF to zero, and stores one byte.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t linux_x86_64_emit_op_get(bfc_asm_t* asm_prog)
 {
@@ -125,6 +165,11 @@ static bfc_error_t linux_x86_64_emit_op_get(bfc_asm_t* asm_prog)
     );
 }
 
+/**
+ * @brief Zero-extends the current cell and calls `putchar` through the PLT.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t linux_x86_64_emit_op_put(bfc_asm_t* asm_prog)
 {
@@ -134,6 +179,11 @@ static bfc_error_t linux_x86_64_emit_op_put(bfc_asm_t* asm_prog)
     );
 }
 
+/**
+ * @brief Stores a normalized byte value in the current cell.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t linux_x86_64_emit_op_set(bfc_asm_t* asm_prog, int64_t imm)
 {
@@ -142,18 +192,31 @@ static bfc_error_t linux_x86_64_emit_op_set(bfc_asm_t* asm_prog, int64_t imm)
     return bfc_codegen_emitf(asm_prog, "    movb $%u, (%%rbx)\n", (unsigned) normalized);
 }
 
+/**
+ * @brief Uses `je` to branch when the current cell is zero.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1, 2)]]
 static bfc_error_t linux_x86_64_emit_loop_test_z(bfc_asm_t* asm_prog, const char* label)
 {
     return bfc_codegen_emitf(asm_prog, "    cmpb $0, (%%rbx)\n    je %s\n", label);
 }
 
+/**
+ * @brief Uses `jne` to branch when the current cell is nonzero.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1, 2)]]
 static bfc_error_t linux_x86_64_emit_loop_test_nz(bfc_asm_t* asm_prog, const char* label)
 {
     return bfc_codegen_emitf(asm_prog, "    cmpb $0, (%%rbx)\n    jne %s\n", label);
 }
 
+/**
+ * @brief Immutable backend descriptor exported to generic code generation.
+ */
 const bfc_backend_t BFC_BACKEND_LINUX_X86_64 = {
     .target = {
         .arch = BFC_ARCH_X86_64,
@@ -173,5 +236,3 @@ const bfc_backend_t BFC_BACKEND_LINUX_X86_64 = {
     .emit_loop_test_z  = linux_x86_64_emit_loop_test_z,
     .emit_loop_test_nz = linux_x86_64_emit_loop_test_nz,
 };
-
-/** @} */

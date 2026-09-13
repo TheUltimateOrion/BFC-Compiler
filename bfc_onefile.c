@@ -1,10 +1,10 @@
 /**
- * @file bfc_onefile_doxygen.c
+ * @file bfc_onefile.c
  * @brief Single-file C23 implementation of the bfc Brainfuck compiler.
  *
  * This translation unit combines the public interfaces, internal compiler
  * contracts, frontend pipeline, target handling, generic code generator, and
- * currently implemented macOS backends. The modular source tree remains the
+ * currently implemented macOS and Linux backends. The modular source tree remains the
  * preferred layout for ongoing development.
  *
  * @details
@@ -539,7 +539,13 @@ bfc_error_t bfc_codegen_emitf(bfc_asm_t* asm_prog, const char* format, ...);
  * or an allocation failure.
  */
 
-/* Allocate an uninitialized array after checking the byte-size product. */
+/**
+ * @brief Allocates an uninitialized typed array after checked multiplication.
+ *
+ * @param count Number of elements.
+ * @param element_size Size of each element.
+ * @return Allocated storage, or null on overflow/allocation failure.
+ */
 void* bfc_malloc_array(size_t count, size_t element_size)
 {
     size_t bytes;
@@ -552,9 +558,12 @@ void* bfc_malloc_array(size_t count, size_t element_size)
     return malloc(bytes);
 }
 
-/*
- * Allocate a zero-initialized array. calloc(1, bytes) is used only after the
- * multiplication has been checked explicitly.
+/**
+ * @brief Allocates a zero-initialized typed array after checked multiplication.
+ *
+ * @param count Number of elements.
+ * @param element_size Size of each element.
+ * @return Zeroed storage, or null on overflow/allocation failure.
  */
 void* bfc_calloc_array(size_t count, size_t element_size)
 {
@@ -568,10 +577,16 @@ void* bfc_calloc_array(size_t count, size_t element_size)
     return calloc(1, bytes);
 }
 
-/*
- * Resize an existing typed array. On failure, realloc leaves the caller's
- * original allocation valid; callers must assign the result through a
- * temporary pointer.
+/**
+ * @brief Resizes a typed array after checked multiplication.
+ *
+ * On failure, the original allocation remains valid. The caller must assign
+ * the result through a temporary pointer when preserving that allocation.
+ *
+ * @param allocation Existing allocation, or null.
+ * @param count New element count.
+ * @param element_size Size of each element.
+ * @return Resized storage, or null on overflow/allocation failure.
  */
 void* bfc_realloc_array(void* allocation, size_t count, size_t element_size)
 {
@@ -585,7 +600,6 @@ void* bfc_realloc_array(void* allocation, size_t count, size_t element_size)
     return realloc(allocation, bytes);
 }
 
-/** @} */
 /* ==========================================================================
  * bfc_token.c
  * ========================================================================== */
@@ -599,15 +613,26 @@ void* bfc_realloc_array(void* allocation, size_t count, size_t element_size)
  * caller's pointer so the released handle can be reset to nullptr.
  */
 
-/* Construct a complete token value without exposing partial initialization. */
+/**
+ * @brief Constructs a complete token value without exposing partial initialization.
+ *
+ * @param tok_type Token kind.
+ * @param line One-based source line.
+ * @param col One-based source column.
+ * @return The initialized token.
+ */
 bfc_token_t bfc_make_token(bfc_token_type_t const tok_type, uint32_t const line, uint32_t const col)
 {
     return (bfc_token_t) {.type = tok_type, .line = line, .col = col};
 }
 
-/*
- * Release both ownership layers: the token array and its containing stream.
- * Null input is accepted so the function is suitable for cleanup attributes.
+/**
+ * @brief Releases a token stream and clears the caller's pointer.
+ *
+ * Both the token array and its containing stream are released. Null input is
+ * accepted so the function is suitable for cleanup attributes.
+ *
+ * @param ptok_stream Pointer to the owned token-stream pointer.
  */
 void bfc_token_stream_destroy(bfc_token_stream_t** ptok_stream)
 {
@@ -622,7 +647,6 @@ void bfc_token_stream_destroy(bfc_token_stream_t** ptok_stream)
     *ptok_stream = nullptr;
 }
 
-/** @} */
 /* ==========================================================================
  * bfc_error.c
  * ========================================================================== */
@@ -636,7 +660,14 @@ void bfc_token_stream_destroy(bfc_token_stream_t** ptok_stream)
  * the source location, the corresponding source line, and a caret marker.
  */
 
-/* Construct an error and format its message directly into owned storage. */
+/**
+ * @brief Constructs an error and formats its message into owned storage.
+ *
+ * @param error_code Error classification.
+ * @param format `printf`-style diagnostic format.
+ * @param ... Values consumed by `format`.
+ * @return The formatted error.
+ */
 bfc_error_t bfc_make_errorf(bfc_err_code_t error_code, const char* format, ...)
 {
     bfc_error_t err = {
@@ -653,7 +684,15 @@ bfc_error_t bfc_make_errorf(bfc_err_code_t error_code, const char* format, ...)
     return err;
 }
 
-/* Formatted constructor for diagnostics tied to one source token. */
+/**
+ * @brief Constructs a formatted error associated with a source token.
+ *
+ * @param error_code Error classification.
+ * @param token Source location associated with the error.
+ * @param format `printf`-style diagnostic format.
+ * @param ... Values consumed by `format`.
+ * @return The formatted token-associated error.
+ */
 bfc_error_t
 bfc_make_errorf_with_token(bfc_err_code_t error_code, bfc_token_t token, const char* format, ...)
 {
@@ -672,6 +711,13 @@ bfc_make_errorf_with_token(bfc_err_code_t error_code, bfc_token_t token, const c
     return err;
 }
 
+/**
+ * @brief Constructs an error by copying a diagnostic message.
+ *
+ * @param error_code Error classification.
+ * @param msg Message to copy, or null for an empty message.
+ * @return The initialized error.
+ */
 bfc_error_t bfc_make_error(bfc_err_code_t const error_code, char const* msg)
 {
     bfc_error_t err = {0};
@@ -686,6 +732,14 @@ bfc_error_t bfc_make_error(bfc_err_code_t const error_code, char const* msg)
     return err;
 }
 
+/**
+ * @brief Constructs an error by copying a message and source token.
+ *
+ * @param error_code Error classification.
+ * @param msg Message to copy, or null for an empty message.
+ * @param token Source location associated with the error.
+ * @return The initialized token-associated error.
+ */
 bfc_error_t
 bfc_make_error_with_token(bfc_err_code_t const error_code, char const* msg, bfc_token_t const token)
 {
@@ -702,9 +756,13 @@ bfc_make_error_with_token(bfc_err_code_t const error_code, char const* msg, bfc_
     return err;
 }
 
-/*
- * Convert an error enum to its symbolic spelling. ERROR_LIST keeps this switch
- * synchronized with the enum definition.
+/**
+ * @brief Converts an error enum to its symbolic spelling.
+ *
+ * `ERROR_LIST` keeps this switch synchronized with the enum definition.
+ *
+ * @param error_code Error code to name.
+ * @return The symbolic spelling, or `Unknown error` for an invalid value.
  */
 char const* bfc_get_error_code(bfc_err_code_t const error_code)
 {
@@ -725,9 +783,14 @@ char const* bfc_get_error_code(bfc_err_code_t const error_code)
     }
 }
 
-/*
- * Source-aware bracket errors receive an expanded diagnostic. Other errors
- * use a compact compiler-style message.
+/**
+ * @brief Logs a compiler diagnostic to standard error.
+ *
+ * Bracket errors include the source line and caret location. Other errors use
+ * a compact compiler-style message.
+ *
+ * @param err Error to report.
+ * @param program Source program used to resolve bracket locations.
  */
 void bfc_log_error(bfc_error_t const err, const struct bfc_program_t* const program)
 {
@@ -763,7 +826,6 @@ void bfc_log_error(bfc_error_t const err, const struct bfc_program_t* const prog
     );
 }
 
-/** @} */
 /* ==========================================================================
  * bfc_target.c
  * ========================================================================== */
@@ -841,7 +903,13 @@ static const bfc_target_entry_t BFC_TARGETS[] = {
     },
 };
 
-/* Parse by exact string match to avoid ambiguous partial target names. */
+/**
+ * @brief Parses an exact supported target triple.
+ *
+ * @param target Destination target structure.
+ * @param triple Target triple to parse.
+ * @return `BFC_ERR_OK` when recognized; an argument error otherwise.
+ */
 bfc_error_t bfc_target_parse(bfc_target_t* target, const char* triple)
 {
     for (size_t i = 0; i < BFC_ARRAY_LENGTH(BFC_TARGETS); ++i)
@@ -856,10 +924,13 @@ bfc_error_t bfc_target_parse(bfc_target_t* target, const char* triple)
     return bfc_make_error(ERR_ARGS, "Unknown or unsupported target triple");
 }
 
-/*
- * Host detection supplies the default target when --target is omitted.
+/**
+ * @brief Returns the architecture and operating system of the compiler host.
+ *
  * Predefined compiler macros describe the machine running bfc, not an
  * arbitrary cross-compilation target.
+ *
+ * @return The host target used when `--target` is omitted.
  */
 bfc_target_t bfc_target_host(void)
 {
@@ -891,7 +962,6 @@ bfc_target_t bfc_target_host(void)
     };
 }
 
-/** @} */
 /* ==========================================================================
  * bfc_cli.c
  * ========================================================================== */
@@ -922,6 +992,7 @@ typedef struct
 } bfc_option_t;
 
 [[gnu::nonnull(1)]]
+/** @brief Sets the help-requested flag. @internal */
 static bfc_error_t bfc_set_help(bfc_args_t* args, const char* value)
 {
     (void) value;
@@ -931,6 +1002,7 @@ static bfc_error_t bfc_set_help(bfc_args_t* args, const char* value)
 }
 
 [[gnu::nonnull(1)]]
+/** @brief Sets the assembly-only flag. @internal */
 static bfc_error_t bfc_set_assemble(bfc_args_t* args, const char* value)
 {
     (void) value;
@@ -940,6 +1012,7 @@ static bfc_error_t bfc_set_assemble(bfc_args_t* args, const char* value)
 }
 
 [[gnu::nonnull(1)]]
+/** @brief Disables semicolon comment handling. @internal */
 static bfc_error_t bfc_set_no_comments(bfc_args_t* args, const char* value)
 {
     (void) value;
@@ -949,6 +1022,7 @@ static bfc_error_t bfc_set_no_comments(bfc_args_t* args, const char* value)
 }
 
 [[gnu::nonnull(1, 2)]]
+/** @brief Stores the output path option. @internal */
 static bfc_error_t bfc_set_output(bfc_args_t* args, const char* value)
 {
     if (args->output)
@@ -961,6 +1035,7 @@ static bfc_error_t bfc_set_output(bfc_args_t* args, const char* value)
 }
 
 [[gnu::nonnull(1, 2)]]
+/** @brief Stores the target-triple option. @internal */
 static bfc_error_t bfc_set_target(bfc_args_t* args, const char* value)
 {
     if (args->target)
@@ -1014,7 +1089,12 @@ static const bfc_option_t BFC_OPTIONS[] = {
      }
 };
 
-/* Match one complete short or long option spelling. */
+/**
+ * @brief Finds an option by its complete short or long spelling.
+ * @param argument Argument spelling to search for.
+ * @return Matching option, or null when no option matches.
+ * @internal
+ */
 [[gnu::pure, gnu::nonnull(1)]]
 static const bfc_option_t* bfc_find_option(const char* argument)
 {
@@ -1036,7 +1116,9 @@ static const bfc_option_t* bfc_find_option(const char* argument)
     return nullptr;
 }
 
-/* Format option usage dynamically from BFC_OPTIONS to avoid duplicated text. */
+/**
+ * @brief Prints command-line usage generated from `BFC_OPTIONS`.
+ */
 void bfc_cmd_help(void)
 {
     printf("OVERVIEW: bfc Brainfuck compiler\n\n");
@@ -1080,12 +1162,17 @@ void bfc_cmd_help(void)
     }
 }
 
-/*
- * Parse exactly one positional input path.
+/**
+ * @brief Parses command-line arguments into compiler state.
  *
- * "--" permanently disables option parsing. Options with value_name consume
- * the following argv element; attached forms such as --target=value are not
- * handled by this parser.
+ * Exactly one positional input path is accepted. `--` permanently disables
+ * option parsing. Options with `value_name` consume the following argv
+ * element; attached forms such as `--target=value` are not handled.
+ *
+ * @param cmd_args Destination command-line state.
+ * @param argc Argument count.
+ * @param argv Argument vector.
+ * @return `BFC_ERR_OK` on success or an argument error.
  */
 bfc_error_t bfc_process_args(bfc_args_t* cmd_args, int argc, char* const argv[])
 {
@@ -1161,7 +1248,6 @@ bfc_error_t bfc_process_args(bfc_args_t* cmd_args, int argc, char* const argv[])
     return BFC_ERR_OK;
 }
 
-/** @} */
 /* ==========================================================================
  * bfc_io.c
  * ========================================================================== */
@@ -1175,9 +1261,15 @@ bfc_error_t bfc_process_args(bfc_args_t* cmd_args, int argc, char* const argv[])
  * bfc_program_getline() returns a separate allocation owned by its caller.
  */
 
-/*
- * Load an entire source file into memory and transfer ownership through
- * *program only after every allocation and read succeeds.
+/**
+ * @brief Loads a complete Brainfuck source file into an owning program object.
+ *
+ * Ownership is transferred through `program` only after every allocation and
+ * read succeeds. The source buffer is null-terminated.
+ *
+ * @param program Destination program pointer.
+ * @param file_path Path to the source file.
+ * @return `BFC_ERR_OK` on success or an I/O/allocation error.
  */
 bfc_error_t bfc_program_create(bfc_program_t** program, char const* file_path)
 {
@@ -1298,7 +1390,10 @@ bfc_error_t bfc_program_create(bfc_program_t** program, char const* file_path)
     return bfc_make_errorf(ERR_IO, "No such file or directory: '%s'", file_path);
 }
 
-/* Release both owned strings and then the program object itself. */
+/**
+ * @brief Releases a source program and clears the caller's pointer.
+ * @param pprogram Pointer to the owned program pointer.
+ */
 void bfc_program_destroy(bfc_program_t** pprogram)
 {
     if (!pprogram || !*pprogram)
@@ -1313,9 +1408,13 @@ void bfc_program_destroy(bfc_program_t** pprogram)
     *pprogram = nullptr;
 }
 
-/*
- * Return a borrowed pointer to the final path component; no allocation occurs.
- * Both POSIX and Windows path separators are recognized.
+/**
+ * @brief Returns the borrowed basename of a source path.
+ *
+ * Both POSIX and Windows path separators are recognized. No allocation occurs.
+ *
+ * @param program Source program.
+ * @return Borrowed basename within `program->path`.
  */
 char const* bfc_program_getname(bfc_program_t const* program)
 {
@@ -1332,9 +1431,12 @@ char const* bfc_program_getname(bfc_program_t const* program)
     return name;
 }
 
-/*
- * Return a newly allocated copy of a one-based source line. The caller owns
- * the result and must free it.
+/**
+ * @brief Returns an allocated copy of a one-based source line.
+ *
+ * @param program Source program.
+ * @param n One-based line number.
+ * @return Newly allocated line copy, or null for an invalid line/allocation failure.
  */
 char* bfc_program_getline(bfc_program_t const* const program, size_t const n)
 {
@@ -1376,7 +1478,6 @@ char* bfc_program_getline(bfc_program_t const* const program, size_t const n)
     return line_buf;
 }
 
-/** @} */
 /* ==========================================================================
  * bfc_lexer.c
  * ========================================================================== */
@@ -1391,9 +1492,16 @@ char* bfc_program_getline(bfc_program_t const* const program, size_t const n)
  * semicolon starts a line comment unless --fno-comments is active.
  */
 
-/*
- * Allocate a stream in *token_stream. The source size is a safe upper bound
- * for token count because each input byte can produce at most one token.
+/**
+ * @brief Lexes Brainfuck instructions from a loaded source program.
+ *
+ * Non-Brainfuck characters are ignored. Semicolon comments are handled
+ * according to `cmd_args.f_no_comments`.
+ *
+ * @param token_stream Destination owning token stream.
+ * @param program Loaded source program.
+ * @param cmd_args Command-line options affecting lexing.
+ * @return `BFC_ERR_OK` on success or an allocation error.
  */
 bfc_error_t bfc_lex(
     bfc_token_stream_t**       token_stream,
@@ -1527,7 +1635,6 @@ end:
     return err;
 }
 
-/** @} */
 /* ==========================================================================
  * bfc_jumptable.c
  * ========================================================================== */
@@ -1542,9 +1649,15 @@ end:
  * the -1 sentinel.
  */
 
-/*
- * Build a table with one entry per token. Matched brackets contain each
- * other's indices; all other tokens retain -1.
+/**
+ * @brief Validates matching brackets and builds a token-index jump table.
+ *
+ * Matched brackets contain each other's indices; all other entries retain the
+ * `-1` sentinel.
+ *
+ * @param jump_table Destination owning jump table.
+ * @param tok_stream Token stream to validate.
+ * @return `BFC_ERR_OK` on success or a bracket/allocation error.
  */
 bfc_error_t bfc_parse_jump_table(int64_t** jump_table, bfc_token_stream_t const* const tok_stream)
 {
@@ -1643,7 +1756,10 @@ missing_closing_bracket:
     return err;
 }
 
-/* Release the flat jump table and clear the caller's pointer. */
+/**
+ * @brief Releases a jump table and clears the caller's pointer.
+ * @param pjump_table Pointer to the owning jump-table pointer.
+ */
 void bfc_jump_table_destroy(int64_t** pjump_table)
 {
     if (!pjump_table || !*pjump_table)
@@ -1656,7 +1772,6 @@ void bfc_jump_table_destroy(int64_t** pjump_table)
     *pjump_table = nullptr;
 }
 
-/** @} */
 /* ==========================================================================
  * bfc_ir.c
  * ========================================================================== */
@@ -1683,7 +1798,12 @@ typedef struct
     size_t capacity;
 } bfc_ir_stack_t;
 
-/* Construct an instruction whose union operand is a signed immediate. */
+/**
+ * @brief Constructs an immediate-bearing IR instruction.
+ * @param ir_token_type IR operation kind.
+ * @param imm Signed immediate operand.
+ * @return Initialized instruction.
+ */
 bfc_ir_instr_t bfc_ir_make_imm_instr(bfc_ir_token_type_t const ir_token_type, int64_t const imm)
 {
     return (bfc_ir_instr_t) {
@@ -1692,7 +1812,11 @@ bfc_ir_instr_t bfc_ir_make_imm_instr(bfc_ir_token_type_t const ir_token_type, in
     };
 }
 
-/* Construct an operand-free instruction with the union zero-initialized. */
+/**
+ * @brief Constructs an IR instruction with a zero-initialized operand union.
+ * @param ir_token_type IR operation kind.
+ * @return Initialized instruction.
+ */
 bfc_ir_instr_t bfc_ir_make_zero_instr(bfc_ir_token_type_t const ir_token_type)
 {
     return (bfc_ir_instr_t) {
@@ -1700,12 +1824,15 @@ bfc_ir_instr_t bfc_ir_make_zero_instr(bfc_ir_token_type_t const ir_token_type)
     };
 }
 
-/*
- * Build a tree of IR blocks in one pass over the validated token stream.
+/**
+ * @brief Builds a recursively nested IR tree from a validated token stream.
  *
- * stack.blocks[0] is the root. Entering '[' allocates and pushes a child block;
- * ']' pops back to its parent. Ownership of every child is stored in the
- * corresponding IR_LOOP instruction.
+ * A child block is allocated for each loop and owned by its `IR_LOOP`
+ * instruction.
+ *
+ * @param root_block Destination owning root block.
+ * @param tok_stream Validated token stream.
+ * @return `BFC_ERR_OK` on success or an allocation error.
  */
 bfc_error_t bfc_ir_create(bfc_ir_block_t** root_block, bfc_token_stream_t const* const tok_stream)
 {
@@ -1894,12 +2021,15 @@ end:
     return err;
 }
 
-/*
- * Replace one block with an optimized block.
+/**
+ * @brief Replaces an IR block with an optimized equivalent.
  *
  * Adjacent ADD or MOVE instructions are folded into one signed immediate.
  * Nested loops are optimized recursively, and [+]/[-] clear loops become
  * IR_SET 0 under the compiler's 8-bit wrapping-cell model.
+ *
+ * @param ir_block Pointer to the block being replaced.
+ * @return `BFC_ERR_OK` on success or an allocation error.
  */
 bfc_error_t bfc_ir_optimize_rep(bfc_ir_block_t** ir_block)
 {
@@ -2006,9 +2136,12 @@ end:
     return err;
 }
 
-/*
- * Recursively release loop bodies before releasing the containing block.
+/**
+ * @brief Recursively releases an IR tree and clears the caller's pointer.
+ *
  * Null input is accepted for cleanup-attribute compatibility.
+ *
+ * @param proot_block Pointer to the owning root-block pointer.
  */
 void bfc_ir_destroy(bfc_ir_block_t** proot_block)
 {
@@ -2032,7 +2165,6 @@ void bfc_ir_destroy(bfc_ir_block_t** proot_block)
     *proot_block = nullptr;
 }
 
-/** @} */
 /* ==========================================================================
  * bfc_codegen.c
  * ========================================================================== */
@@ -2047,9 +2179,12 @@ void bfc_ir_destroy(bfc_ir_block_t** proot_block)
  * OS-specific instruction syntax belongs in backend modules.
  */
 
-/*
- * Resolve the exact architecture/OS pair to an immutable callback table.
- * Return nullptr when the requested backend is not compiled into this build.
+/**
+ * @brief Selects the backend for an exact architecture and operating system.
+ *
+ * @param target Target identity to resolve.
+ * @return Immutable backend descriptor, or null when unavailable.
+ * @internal
  */
 [[gnu::pure]]
 static const bfc_backend_t* bfc_backend_select(bfc_target_t target)
@@ -2077,9 +2212,12 @@ static const bfc_backend_t* bfc_backend_select(bfc_target_t target)
     return nullptr;
 }
 
-/*
- * Emit loop structure generically while delegating branch syntax to the
- * backend. label_id guarantees unique labels across nested and sibling loops.
+/**
+ * @brief Emits one generic loop and delegates tests to the selected backend.
+ *
+ * `label_id` guarantees unique labels across nested and sibling loops.
+ *
+ * @internal
  */
 [[gnu::nonnull(1, 2)]]
 static bfc_error_t bfc_codegen_emit_loop(bfc_asm_t* asm_prog, const bfc_ir_block_t* body)
@@ -2123,12 +2261,20 @@ static bfc_error_t bfc_codegen_emit_loop(bfc_asm_t* asm_prog, const bfc_ir_block
     return err;
 }
 
-/*
- * Append text while preserving two invariants:
+/**
+ * @brief Appends text to the dynamically growing assembly buffer.
+ *
+ * The buffer remains null-terminated and size arithmetic is checked before
+ * geometric growth.
+ *
+ * @param asm_prog Assembly object receiving the text.
+ * @param text Null-terminated assembly fragment.
+ * @return `BFC_ERR_OK` or an allocation/size error.
+ * @internal
+ *
+ * Invariants:
  *   - length excludes the trailing null byte
  *   - buffer[length] is always '\0'
- *
- * Size arithmetic is checked before geometrically growing the byte buffer.
  */
 bfc_error_t bfc_codegen_emit_text(bfc_asm_t* asm_prog, const char* text)
 {
@@ -2174,9 +2320,15 @@ bfc_error_t bfc_codegen_emit_text(bfc_asm_t* asm_prog, const char* text)
     return BFC_ERR_OK;
 }
 
-/*
- * Traverse one IR block and dispatch each operation through the selected
- * backend. IR_LOOP recurses through the generic loop emitter above.
+/**
+ * @brief Traverses an IR block and dispatches operations to the backend.
+ *
+ * `IR_LOOP` recurses through the generic loop emitter.
+ *
+ * @param asm_prog Assembly object and selected backend.
+ * @param ir_block Optimized IR block to lower.
+ * @return `BFC_ERR_OK` or the first emission error.
+ * @internal
  */
 bfc_error_t bfc_codegen_emit_block(bfc_asm_t* asm_prog, const bfc_ir_block_t* ir_block)
 {
@@ -2211,9 +2363,14 @@ bfc_error_t bfc_codegen_emit_block(bfc_asm_t* asm_prog, const bfc_ir_block_t* ir
     return BFC_ERR_OK;
 }
 
-/*
- * Format one assembly fragment into a bounded temporary buffer before
- * appending it. The format attribute lets the compiler validate call sites.
+/**
+ * @brief Formats and appends one bounded assembly fragment.
+ *
+ * @param asm_prog Assembly object receiving the fragment.
+ * @param format `printf`-style format string.
+ * @param ... Values consumed by `format`.
+ * @return `BFC_ERR_OK` or a formatting/emission error.
+ * @internal
  */
 [[gnu::nonnull(1, 2), gnu::format(printf, 2, 3)]]
 bfc_error_t bfc_codegen_emitf(bfc_asm_t* asm_prog, const char* format, ...)
@@ -2235,11 +2392,16 @@ bfc_error_t bfc_codegen_emitf(bfc_asm_t* asm_prog, const char* format, ...)
     return bfc_codegen_emit_text(asm_prog, buffer);
 }
 
-/*
- * Allocate and populate an assembly object.
+/**
+ * @brief Generates target-specific assembly for an optimized IR tree.
  *
- * Ownership is transferred to *out_asm only after every emission stage
+ * Ownership is transferred to `out_asm` only after every emission stage
  * succeeds. Any intermediate failure destroys the partially built object.
+ *
+ * @param out_asm Destination owning assembly pointer.
+ * @param ir_block Optimized IR tree to lower.
+ * @param target Exact architecture and operating-system target.
+ * @return `BFC_ERR_OK` or a target/emission/allocation error.
  */
 bfc_error_t bfc_codegen(bfc_asm_t** out_asm, const bfc_ir_block_t* ir_block, bfc_target_t target)
 {
@@ -2304,7 +2466,10 @@ bfc_error_t bfc_codegen(bfc_asm_t** out_asm, const bfc_ir_block_t* ir_block, bfc
     return BFC_ERR_OK;
 }
 
-/* Release the generated text buffer and its owning assembly object. */
+/**
+ * @brief Releases generated assembly and clears the caller's pointer.
+ * @param pasm_prog Pointer to the owning assembly pointer.
+ */
 void bfc_asm_destroy(bfc_asm_t** pasm_prog)
 {
     if (!pasm_prog || !*pasm_prog)
@@ -2318,9 +2483,15 @@ void bfc_asm_destroy(bfc_asm_t** pasm_prog)
     *pasm_prog = nullptr;
 }
 
-/*
- * Write exactly length bytes; the internal null terminator is not part of the
- * assembly file.
+/**
+ * @brief Writes generated assembly to a file.
+ *
+ * Exactly `asm_prog->length` bytes are written; the internal null terminator
+ * is not part of the output file.
+ *
+ * @param asm_prog Assembly object to write.
+ * @param path Output path.
+ * @return `BFC_ERR_OK` or an I/O error.
  */
 bfc_error_t bfc_asm_write_file(const bfc_asm_t* asm_prog, const char* path)
 {
@@ -2348,7 +2519,6 @@ bfc_error_t bfc_asm_write_file(const bfc_asm_t* asm_prog, const char* path)
     return BFC_ERR_OK;
 }
 
-/** @} */
 /* ==========================================================================
  * bfc_backend_macos_aarch64.c
  * ========================================================================== */
@@ -2363,9 +2533,10 @@ bfc_error_t bfc_asm_write_file(const bfc_asm_t* asm_prog, const char* path)
  * scratch register for immediates and cell values.
  */
 
-/*
- * Materialize a 64-bit constant in X16 as one MOVZ followed by only the MOVK
- * instructions required for nonzero 16-bit chunks.
+/**
+ * @brief Materializes a 64-bit constant in scratch register `x16`.
+ *
+ * @internal
  */
 [[gnu::nonnull(1)]]
 static bfc_error_t macos_aarch64_emit_load_u64(bfc_asm_t* asm_prog, uint64_t value)
@@ -2400,6 +2571,7 @@ static bfc_error_t macos_aarch64_emit_load_u64(bfc_asm_t* asm_prog, uint64_t val
     return BFC_ERR_OK;
 }
 
+/** @brief Emits the initial Mach-O text-section directives. @internal */
 [[gnu::nonnull(1)]]
 static bfc_error_t macos_aarch64_emit_header(bfc_asm_t* asm_prog)
 {
@@ -2409,6 +2581,7 @@ static bfc_error_t macos_aarch64_emit_header(bfc_asm_t* asm_prog)
     );
 }
 
+/** @brief Declares the zero-initialized tape in Mach-O BSS. @internal */
 [[gnu::nonnull(1)]]
 static bfc_error_t macos_aarch64_emit_data_section(bfc_asm_t* asm_prog)
 {
@@ -2422,9 +2595,12 @@ static bfc_error_t macos_aarch64_emit_data_section(bfc_asm_t* asm_prog)
     );
 }
 
-/*
- * Establish an ABI-compliant main function and preserve X19, the callee-saved
- * register used as the tape pointer.
+/**
+ * @brief Emits the macOS AArch64 `main` prologue and tape address.
+ *
+ * Preserves X19, the callee-saved register used as the tape pointer.
+ *
+ * @internal
  */
 [[gnu::nonnull(1)]]
 static bfc_error_t macos_aarch64_emit_symbol(bfc_asm_t* asm_prog)
@@ -2443,6 +2619,7 @@ static bfc_error_t macos_aarch64_emit_symbol(bfc_asm_t* asm_prog)
     );
 }
 
+/** @brief Restores macOS AArch64 state and returns zero. @internal */
 [[gnu::nonnull(1)]]
 static bfc_error_t macos_aarch64_emit_end(bfc_asm_t* asm_prog)
 {
@@ -2455,9 +2632,10 @@ static bfc_error_t macos_aarch64_emit_end(bfc_asm_t* asm_prog)
     );
 }
 
-/*
- * Normalize the IR operand to one byte so positive and negative additions use
- * Brainfuck's modulo-256 cell semantics.
+/**
+ * @brief Lowers wrapping byte-cell addition.
+ *
+ * @internal
  */
 [[gnu::nonnull(1)]]
 static bfc_error_t macos_aarch64_emit_op_add(bfc_asm_t* asm_prog, int64_t imm)
@@ -2478,9 +2656,10 @@ static bfc_error_t macos_aarch64_emit_op_add(bfc_asm_t* asm_prog, int64_t imm)
     );
 }
 
-/*
- * Use AArch64's 12-bit add/sub immediate form for common small movements.
- * Larger magnitudes are materialized in X16.
+/**
+ * @brief Moves the tape pointer using direct or materialized immediates.
+ *
+ * @internal
  */
 [[gnu::nonnull(1)]]
 static bfc_error_t macos_aarch64_emit_op_move(bfc_asm_t* asm_prog, int64_t imm)
@@ -2516,7 +2695,11 @@ static bfc_error_t macos_aarch64_emit_op_move(bfc_asm_t* asm_prog, int64_t imm)
     return bfc_codegen_emit_text(asm_prog, "    add x19, x19, x16\n");
 }
 
-/* Convert getchar()'s EOF result (-1) to the compiler's chosen zero byte. */
+/**
+ * @brief Calls `_getchar`, maps EOF to zero, and stores one byte.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t macos_aarch64_emit_op_get(bfc_asm_t* asm_prog)
 {
@@ -2528,6 +2711,7 @@ static bfc_error_t macos_aarch64_emit_op_get(bfc_asm_t* asm_prog)
     );
 }
 
+/** @brief Loads the current cell and calls `_putchar`. @internal */
 [[gnu::nonnull(1)]]
 static bfc_error_t macos_aarch64_emit_op_put(bfc_asm_t* asm_prog)
 {
@@ -2537,6 +2721,7 @@ static bfc_error_t macos_aarch64_emit_op_put(bfc_asm_t* asm_prog)
     );
 }
 
+/** @brief Stores a normalized byte value in the current cell. @internal */
 [[gnu::nonnull(1)]]
 static bfc_error_t macos_aarch64_emit_op_set(bfc_asm_t* asm_prog, int64_t imm)
 {
@@ -2555,6 +2740,7 @@ static bfc_error_t macos_aarch64_emit_op_set(bfc_asm_t* asm_prog, int64_t imm)
     );
 }
 
+/** @brief Uses `cbz` to branch when the current cell is zero. @internal */
 [[gnu::nonnull(1, 2)]]
 static bfc_error_t macos_aarch64_emit_loop_test_z(bfc_asm_t* asm_prog, const char* label)
 {
@@ -2566,6 +2752,7 @@ static bfc_error_t macos_aarch64_emit_loop_test_z(bfc_asm_t* asm_prog, const cha
     );
 }
 
+/** @brief Uses `cbnz` to branch when the current cell is nonzero. @internal */
 [[gnu::nonnull(1, 2)]]
 static bfc_error_t macos_aarch64_emit_loop_test_nz(bfc_asm_t* asm_prog, const char* label)
 {
@@ -2577,8 +2764,8 @@ static bfc_error_t macos_aarch64_emit_loop_test_nz(bfc_asm_t* asm_prog, const ch
     );
 }
 
-/*
- * Immutable macOS/AArch64 callback table exported to generic code generation.
+/**
+ * @brief Immutable macOS AArch64 backend descriptor.
  */
 const bfc_backend_t BFC_BACKEND_MACOS_AARCH64 = {
     .target = {.arch = BFC_ARCH_AARCH64, .os = BFC_OS_MACOS},
@@ -2597,7 +2784,6 @@ const bfc_backend_t BFC_BACKEND_MACOS_AARCH64 = {
     .emit_loop_test_nz = macos_aarch64_emit_loop_test_nz,
 };
 
-/** @} */
 /* ==========================================================================
  * bfc_backend_macos_x86_64.c
  * ========================================================================== */
@@ -2612,13 +2798,18 @@ const bfc_backend_t BFC_BACKEND_MACOS_AARCH64 = {
  * register for large pointer-movement immediates.
  */
 
-/* Materialize a full-width unsigned immediate in the R11 scratch register. */
+/**
+ * @brief Materializes a full-width unsigned immediate in scratch register `r11`.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t macos_x86_64_emit_load_u64(bfc_asm_t* asm_prog, uint64_t value)
 {
     return bfc_codegen_emitf(asm_prog, "    movabs r11, 0x%016" PRIx64 "\n", value);
 }
 
+/** @brief Emits Intel syntax and Mach-O text-section directives. @internal */
 [[gnu::nonnull(1)]]
 static bfc_error_t macos_x86_64_emit_header(bfc_asm_t* asm_prog)
 {
@@ -2629,6 +2820,7 @@ static bfc_error_t macos_x86_64_emit_header(bfc_asm_t* asm_prog)
     );
 }
 
+/** @brief Declares the zero-initialized tape in Mach-O BSS. @internal */
 [[gnu::nonnull(1)]]
 static bfc_error_t macos_x86_64_emit_data_section(bfc_asm_t* asm_prog)
 {
@@ -2642,9 +2834,12 @@ static bfc_error_t macos_x86_64_emit_data_section(bfc_asm_t* asm_prog)
     );
 }
 
-/*
- * Establish an ABI-compliant main function. RBX is callee-saved and the extra
- * eight-byte stack adjustment preserves 16-byte alignment before libc calls.
+/**
+ * @brief Emits the macOS x86-64 `main` prologue and tape address.
+ *
+ * Preserves RBX and aligns the stack before libc calls.
+ *
+ * @internal
  */
 [[gnu::nonnull(1)]]
 static bfc_error_t macos_x86_64_emit_symbol(bfc_asm_t* asm_prog)
@@ -2663,6 +2858,7 @@ static bfc_error_t macos_x86_64_emit_symbol(bfc_asm_t* asm_prog)
     );
 }
 
+/** @brief Restores macOS x86-64 state and returns zero. @internal */
 [[gnu::nonnull(1)]]
 static bfc_error_t macos_x86_64_emit_end(bfc_asm_t* asm_prog)
 {
@@ -2676,7 +2872,11 @@ static bfc_error_t macos_x86_64_emit_end(bfc_asm_t* asm_prog)
     );
 }
 
-/* Byte-sized memory arithmetic naturally preserves modulo-256 cell semantics. */
+/**
+ * @brief Lowers wrapping byte-cell addition.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t macos_x86_64_emit_op_add(bfc_asm_t* asm_prog, int64_t imm)
 {
@@ -2690,9 +2890,10 @@ static bfc_error_t macos_x86_64_emit_op_add(bfc_asm_t* asm_prog, int64_t imm)
     return bfc_codegen_emitf(asm_prog, "    add byte ptr [rbx], %u\n", (unsigned) normalized);
 }
 
-/*
- * Prefer an encodable signed immediate. Extremely large movements are lowered
- * through R11 to avoid truncating the IR's 64-bit operand.
+/**
+ * @brief Moves the tape pointer using direct or materialized immediates.
+ *
+ * @internal
  */
 [[gnu::nonnull(1)]]
 static bfc_error_t macos_x86_64_emit_op_move(bfc_asm_t* asm_prog, int64_t imm)
@@ -2722,7 +2923,11 @@ static bfc_error_t macos_x86_64_emit_op_move(bfc_asm_t* asm_prog, int64_t imm)
     return bfc_codegen_emit_text(asm_prog, imm < 0 ? "    sub rbx, r11\n" : "    add rbx, r11\n");
 }
 
-/* Convert getchar()'s EOF result (-1) to the compiler's chosen zero byte. */
+/**
+ * @brief Calls `_getchar`, maps EOF to zero, and stores one byte.
+ *
+ * @internal
+ */
 [[gnu::nonnull(1)]]
 static bfc_error_t macos_x86_64_emit_op_get(bfc_asm_t* asm_prog)
 {
@@ -2735,6 +2940,7 @@ static bfc_error_t macos_x86_64_emit_op_get(bfc_asm_t* asm_prog)
     );
 }
 
+/** @brief Zero-extends the current cell and calls `_putchar`. @internal */
 [[gnu::nonnull(1)]]
 static bfc_error_t macos_x86_64_emit_op_put(bfc_asm_t* asm_prog)
 {
@@ -2744,6 +2950,7 @@ static bfc_error_t macos_x86_64_emit_op_put(bfc_asm_t* asm_prog)
     );
 }
 
+/** @brief Stores a normalized byte value in the current cell. @internal */
 [[gnu::nonnull(1)]]
 static bfc_error_t macos_x86_64_emit_op_set(bfc_asm_t* asm_prog, int64_t imm)
 {
@@ -2752,6 +2959,7 @@ static bfc_error_t macos_x86_64_emit_op_set(bfc_asm_t* asm_prog, int64_t imm)
     return bfc_codegen_emitf(asm_prog, "    mov byte ptr [rbx], %u\n", (unsigned) normalized);
 }
 
+/** @brief Uses `je` to branch when the current cell is zero. @internal */
 [[gnu::nonnull(1, 2)]]
 static bfc_error_t macos_x86_64_emit_loop_test_z(bfc_asm_t* asm_prog, const char* label)
 {
@@ -2763,6 +2971,7 @@ static bfc_error_t macos_x86_64_emit_loop_test_z(bfc_asm_t* asm_prog, const char
     );
 }
 
+/** @brief Uses `jne` to branch when the current cell is nonzero. @internal */
 [[gnu::nonnull(1, 2)]]
 static bfc_error_t macos_x86_64_emit_loop_test_nz(bfc_asm_t* asm_prog, const char* label)
 {
@@ -2774,9 +2983,8 @@ static bfc_error_t macos_x86_64_emit_loop_test_nz(bfc_asm_t* asm_prog, const cha
     );
 }
 
-/*
- * The only externally visible symbol in this backend: an immutable dispatch
- * table consumed by generic code generation.
+/**
+ * @brief Immutable macOS x86-64 backend descriptor.
  */
 const bfc_backend_t BFC_BACKEND_MACOS_X86_64 = {
     .target = {
@@ -2798,16 +3006,18 @@ const bfc_backend_t BFC_BACKEND_MACOS_X86_64 = {
     .emit_loop_test_nz = macos_x86_64_emit_loop_test_nz,
 };
 
-/** @} */
 /* ==========================================================================
  * bfc_backend_linux_aarch64.c
  * ========================================================================== */
 /**
- * @defgroup linux_aarch64_backend Linux AArch64 backend
- * @internal
- * @{
- * Linux AArch64 ELF assembly backend.
+ * @file bfc_backend_linux_aarch64.c
+ * @brief Linux AArch64 assembly backend embedded in the single-file build.
+ *
+ * @details
+ * Implements ELF symbols, the AAPCS64 ABI, and GNU AArch64-syntax lowering
+ * for all IR operations.
  */
+/** @internal Materializes a 64-bit immediate in scratch register `x16`. */
 static bfc_error_t linux_aarch64_emit_load_u64(bfc_asm_t* asm_prog, uint64_t value)
 {
     bfc_error_t err
@@ -2838,11 +3048,13 @@ static bfc_error_t linux_aarch64_emit_load_u64(bfc_asm_t* asm_prog, uint64_t val
     return BFC_ERR_OK;
 }
 
+/** @internal Emits ELF text-section directives. */
 static bfc_error_t linux_aarch64_emit_header(bfc_asm_t* asm_prog)
 {
     return bfc_codegen_emit_text(asm_prog, ".text\n.p2align 2\n");
 }
 
+/** @internal Declares the zero-initialized Brainfuck tape in ELF BSS. */
 static bfc_error_t linux_aarch64_emit_data_section(bfc_asm_t* asm_prog)
 {
     return bfc_codegen_emitf(
@@ -2855,6 +3067,7 @@ static bfc_error_t linux_aarch64_emit_data_section(bfc_asm_t* asm_prog)
     );
 }
 
+/** @internal Emits `main`, its stack frame, and the tape address. */
 static bfc_error_t linux_aarch64_emit_symbol(bfc_asm_t* asm_prog)
 {
     return bfc_codegen_emit_text(
@@ -2872,6 +3085,7 @@ static bfc_error_t linux_aarch64_emit_symbol(bfc_asm_t* asm_prog)
     );
 }
 
+/** @internal Emits the ABI epilogue and zero process status. */
 static bfc_error_t linux_aarch64_emit_end(bfc_asm_t* asm_prog)
 {
     return bfc_codegen_emit_text(
@@ -2884,6 +3098,7 @@ static bfc_error_t linux_aarch64_emit_end(bfc_asm_t* asm_prog)
     );
 }
 
+/** @internal Lowers wrapping byte-cell addition. */
 static bfc_error_t linux_aarch64_emit_op_add(bfc_asm_t* asm_prog, int64_t imm)
 {
     const uint8_t normalized = (uint8_t) imm;
@@ -2902,6 +3117,7 @@ static bfc_error_t linux_aarch64_emit_op_add(bfc_asm_t* asm_prog, int64_t imm)
     );
 }
 
+/** @internal Moves the tape pointer using immediate or register lowering. */
 static bfc_error_t linux_aarch64_emit_op_move(bfc_asm_t* asm_prog, int64_t imm)
 {
     if (imm == 0)
@@ -2932,6 +3148,7 @@ static bfc_error_t linux_aarch64_emit_op_move(bfc_asm_t* asm_prog, int64_t imm)
     );
 }
 
+/** @internal Calls `getchar`, maps EOF to zero, and stores one byte. */
 static bfc_error_t linux_aarch64_emit_op_get(bfc_asm_t* asm_prog)
 {
     return bfc_codegen_emit_text(
@@ -2942,11 +3159,13 @@ static bfc_error_t linux_aarch64_emit_op_get(bfc_asm_t* asm_prog)
     );
 }
 
+/** @internal Loads the current cell and calls `putchar`. */
 static bfc_error_t linux_aarch64_emit_op_put(bfc_asm_t* asm_prog)
 {
     return bfc_codegen_emit_text(asm_prog, "    ldrb w0, [x19]\n    bl   putchar\n");
 }
 
+/** @internal Stores a normalized byte value in the current cell. */
 static bfc_error_t linux_aarch64_emit_op_set(bfc_asm_t* asm_prog, int64_t imm)
 {
     const uint8_t normalized = (uint8_t) imm;
@@ -2964,16 +3183,19 @@ static bfc_error_t linux_aarch64_emit_op_set(bfc_asm_t* asm_prog, int64_t imm)
     );
 }
 
+/** @internal Uses `cbz` to branch when the current cell is zero. */
 static bfc_error_t linux_aarch64_emit_loop_test_z(bfc_asm_t* asm_prog, const char* label)
 {
     return bfc_codegen_emitf(asm_prog, "    ldrb w16, [x19]\n    cbz  w16, %s\n", label);
 }
 
+/** @internal Uses `cbnz` to branch when the current cell is nonzero. */
 static bfc_error_t linux_aarch64_emit_loop_test_nz(bfc_asm_t* asm_prog, const char* label)
 {
     return bfc_codegen_emitf(asm_prog, "    ldrb w16, [x19]\n    cbnz w16, %s\n", label);
 }
 
+/** @brief Immutable Linux AArch64 backend descriptor. */
 const bfc_backend_t BFC_BACKEND_LINUX_AARCH64 = {
     .target = {
         .arch = BFC_ARCH_AARCH64,
@@ -2992,23 +3214,30 @@ const bfc_backend_t BFC_BACKEND_LINUX_AARCH64 = {
     .emit_loop_test_nz = linux_aarch64_emit_loop_test_nz,
 };
 
-/** @} */
 /* ==========================================================================
  * bfc_backend_linux_x86_64.c
  * ========================================================================== */
-/** @defgroup linux_x86_64_backend Linux x86-64 backend @internal @{
- * Linux x86-64 ELF assembly backend in AT&T syntax.
+/**
+ * @file bfc_backend_linux_x86_64.c
+ * @brief Linux x86-64 assembly backend embedded in the single-file build.
+ *
+ * @details
+ * Implements ELF symbols, the System V AMD64 ABI, and AT&T-syntax lowering
+ * for all IR operations.
  */
+/** @internal Materializes a full-width immediate in scratch register `r11`. */
 static bfc_error_t linux_x86_64_emit_load_u64(bfc_asm_t* asm_prog, uint64_t value)
 {
     return bfc_codegen_emitf(asm_prog, "    movabsq $0x%016" PRIx64 ", %%r11\n", value);
 }
 
+/** @internal Emits ELF text-section directives. */
 static bfc_error_t linux_x86_64_emit_header(bfc_asm_t* asm_prog)
 {
     return bfc_codegen_emit_text(asm_prog, ".text\n.p2align 4\n");
 }
 
+/** @internal Declares the zero-initialized Brainfuck tape in ELF BSS. */
 static bfc_error_t linux_x86_64_emit_data_section(bfc_asm_t* asm_prog)
 {
     return bfc_codegen_emitf(
@@ -3021,6 +3250,7 @@ static bfc_error_t linux_x86_64_emit_data_section(bfc_asm_t* asm_prog)
     );
 }
 
+/** @internal Emits `main`, its aligned stack frame, and the tape address. */
 static bfc_error_t linux_x86_64_emit_symbol(bfc_asm_t* asm_prog)
 {
     return bfc_codegen_emit_text(
@@ -3038,6 +3268,7 @@ static bfc_error_t linux_x86_64_emit_symbol(bfc_asm_t* asm_prog)
     );
 }
 
+/** @internal Emits the ABI epilogue and zero process status. */
 static bfc_error_t linux_x86_64_emit_end(bfc_asm_t* asm_prog)
 {
     return bfc_codegen_emit_text(
@@ -3051,6 +3282,7 @@ static bfc_error_t linux_x86_64_emit_end(bfc_asm_t* asm_prog)
     );
 }
 
+/** @internal Lowers wrapping byte-cell addition. */
 static bfc_error_t linux_x86_64_emit_op_add(bfc_asm_t* asm_prog, int64_t imm)
 {
     const uint8_t normalized = (uint8_t) imm;
@@ -3063,6 +3295,7 @@ static bfc_error_t linux_x86_64_emit_op_add(bfc_asm_t* asm_prog, int64_t imm)
     return bfc_codegen_emitf(asm_prog, "    addb $%u, (%%rbx)\n", (unsigned) normalized);
 }
 
+/** @internal Moves the tape pointer using immediate or register lowering. */
 static bfc_error_t linux_x86_64_emit_op_move(bfc_asm_t* asm_prog, int64_t imm)
 {
     if (imm == 0)
@@ -3092,6 +3325,7 @@ static bfc_error_t linux_x86_64_emit_op_move(bfc_asm_t* asm_prog, int64_t imm)
     );
 }
 
+/** @internal Calls `getchar`, maps EOF to zero, and stores one byte. */
 static bfc_error_t linux_x86_64_emit_op_get(bfc_asm_t* asm_prog)
 {
     return bfc_codegen_emit_text(
@@ -3103,11 +3337,13 @@ static bfc_error_t linux_x86_64_emit_op_get(bfc_asm_t* asm_prog)
     );
 }
 
+/** @internal Zero-extends the current cell and calls `putchar` through PLT. */
 static bfc_error_t linux_x86_64_emit_op_put(bfc_asm_t* asm_prog)
 {
     return bfc_codegen_emit_text(asm_prog, "    movzbl (%rbx), %edi\n    call putchar@PLT\n");
 }
 
+/** @internal Stores a normalized byte value in the current cell. */
 static bfc_error_t linux_x86_64_emit_op_set(bfc_asm_t* asm_prog, int64_t imm)
 {
     const uint8_t normalized = (uint8_t) imm;
@@ -3115,16 +3351,19 @@ static bfc_error_t linux_x86_64_emit_op_set(bfc_asm_t* asm_prog, int64_t imm)
     return bfc_codegen_emitf(asm_prog, "    movb $%u, (%%rbx)\n", (unsigned) normalized);
 }
 
+/** @internal Uses `je` to branch when the current cell is zero. */
 static bfc_error_t linux_x86_64_emit_loop_test_z(bfc_asm_t* asm_prog, const char* label)
 {
     return bfc_codegen_emitf(asm_prog, "    cmpb $0, (%%rbx)\n    je %s\n", label);
 }
 
+/** @internal Uses `jne` to branch when the current cell is nonzero. */
 static bfc_error_t linux_x86_64_emit_loop_test_nz(bfc_asm_t* asm_prog, const char* label)
 {
     return bfc_codegen_emitf(asm_prog, "    cmpb $0, (%%rbx)\n    jne %s\n", label);
 }
 
+/** @brief Immutable Linux x86-64 backend descriptor. */
 const bfc_backend_t BFC_BACKEND_LINUX_X86_64 = {
     .target = {
         .arch = BFC_ARCH_X86_64,
@@ -3142,8 +3381,6 @@ const bfc_backend_t BFC_BACKEND_LINUX_X86_64 = {
     .emit_loop_test_z  = linux_x86_64_emit_loop_test_z,
     .emit_loop_test_nz = linux_x86_64_emit_loop_test_nz,
 };
-
-/** @} */
 /* ==========================================================================
  * bfc.c
  * ========================================================================== */
@@ -3172,6 +3409,18 @@ const bfc_backend_t BFC_BACKEND_LINUX_X86_64 = {
     }                                       \
     while (0)
 
+/**
+ * @brief Runs the complete bfc compilation pipeline.
+ *
+ * Parses command-line arguments, loads and validates Brainfuck input, builds
+ * and optimizes IR, selects the requested or host backend, and optionally
+ * writes generated assembly when `-S` is supplied.
+ *
+ * @param argc Argument count.
+ * @param argv Argument vector.
+ * @return `EXIT_SUCCESS` on successful compilation or `EXIT_FAILURE` after a
+ * diagnostic has been logged.
+ */
 int main(int argc, char** argv)
 {
     int ret = EXIT_FAILURE;
@@ -3268,5 +3517,3 @@ int main(int argc, char** argv)
 end:
     return ret;
 }
-
-/** @} */
