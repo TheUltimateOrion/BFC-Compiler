@@ -4,7 +4,8 @@ All notable changes to BFC are documented here.
 
 ## [Unreleased]
 
-Changes for the next release will be recorded here.
+- Added Linux AArch64 and x86-64 ELF assembly backends.
+- Added native Linux target selection to the regression runner.
 
 ## [0.1.1]
 

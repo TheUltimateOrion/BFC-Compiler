@@ -560,6 +560,186 @@ _bfc_tape
 | `IR_SET` | Store an immediate byte |
 | Loop tests | Compare the byte with zero, then use `je` or `jne` |
 
+### Linux AArch64
+
+#### Target identity
+
+```text
+aarch64-unknown-linux-gnu
+BFC_ARCH_AARCH64
+BFC_OS_LINUX
+ELF
+GNU AArch64 assembly syntax
+```
+
+#### Symbols and sections
+
+Linux uses ELF symbol spelling without the leading underscore used by the
+macOS backends:
+
+```asm
+main
+getchar
+putchar
+.bfc_tape
+```
+
+The tape is private, zero-initialized storage in `.bss`:
+
+```asm
+.section .bss
+.balign 16
+.bfc_tape:
+    .skip 30000
+```
+
+The entry point is declared as a global function with GNU ELF metadata:
+
+```asm
+.global main
+.type main, %function
+```
+
+The tape address is materialized with the AArch64 ELF page-relative relocation
+pair:
+
+```asm
+adrp x19, .bfc_tape
+add  x19, x19, :lo12:.bfc_tape
+```
+
+#### Register plan
+
+| Register | Role |
+|---|---|
+| `x19` | Tape pointer; callee-saved by AAPCS64 |
+| `x16` | Scratch register |
+| `w0` | Integer argument and return value |
+| `x29` | Frame pointer |
+| `x30` | Link register |
+
+`x19` is callee-saved under AAPCS64, so it remains valid across calls to
+`getchar` and `putchar`. `x16` is the caller-saved IP0 scratch register and is
+used only for temporary values and large pointer offsets.
+
+#### Function frame and calls
+
+The prologue reserves a 32-byte, 16-byte-aligned frame, saves `x29`, `x30`,
+and `x19`, and initializes the tape pointer. The epilogue restores those
+registers, sets `w0` to zero for `main`'s return value, and returns with `ret`.
+Because the stack remains 16-byte aligned at each call site, the backend can
+call the standard C `getchar` and `putchar` functions directly with `bl`.
+
+`getchar` returns an `int` in `w0`. The backend compares the full return value
+with `EOF` before storing its low byte; EOF becomes zero. For output, the
+current cell is loaded as an unsigned byte into `w0`, which is the first
+integer argument register for `putchar`.
+
+#### Immediate and branch lowering
+
+`IR_MOVE` uses `add` or `sub` with an immediate for magnitudes from 1 through
+4095. Larger magnitudes are loaded into `x16` using `movz` followed by the
+necessary `movk` instructions, then applied with a register form of `add` or
+`sub`. Cell values are normalized to eight bits before `IR_ADD` and `IR_SET`
+are emitted. Loop tests load the current byte and use `cbz` or `cbnz`.
+
+#### Lowering summary
+
+| IR operation | Strategy |
+|---|---|
+| `IR_ADD` | Load byte, add normalized immediate, store byte |
+| `IR_MOVE` | Direct immediate up to 4095; otherwise materialize in `x16` |
+| `IR_GET` | Call `getchar`, map EOF to zero, store low byte |
+| `IR_PUT` | Load byte into `w0`, call `putchar` |
+| `IR_SET` | Store `wzr` for zero or an immediate byte |
+| Loop tests | `cbz` and `cbnz` |
+
+### Linux x86-64
+
+#### Target identity
+
+```text
+x86_64-unknown-linux-gnu
+BFC_ARCH_X86_64
+BFC_OS_LINUX
+ELF
+GNU AT&T assembly syntax
+```
+
+#### Symbols and sections
+
+Linux ELF symbols do not have a leading underscore. The backend emits:
+
+```asm
+main
+getchar@PLT
+putchar@PLT
+.bfc_tape
+```
+
+The tape is private, zero-initialized storage in `.bss`:
+
+```asm
+.section .bss
+.balign 16
+.bfc_tape:
+    .zero 30000
+```
+
+The entry point is declared as a global ELF function:
+
+```asm
+.globl main
+.type main, @function
+```
+
+The tape address uses RIP-relative addressing, which is suitable for the
+position-independent code normally produced by Linux toolchains:
+
+```asm
+leaq .bfc_tape(%rip), %rbx
+```
+
+#### Register plan
+
+| Register | Role |
+|---|---|
+| `%rbx` | Tape pointer; callee-saved by the System V AMD64 ABI |
+| `%r11` | Large-immediate scratch |
+| `%eax` | Return value and input temporary |
+| `%edi` | First integer argument |
+| `%rbp` | Frame pointer |
+
+`%rbx` is callee-saved under the System V AMD64 ABI, so the tape pointer
+survives calls to the C runtime. `%r11` is caller-saved and is used only for
+large pointer offsets. The prologue saves `%rbp` and `%rbx`, then subtracts
+eight bytes so `%rsp` is 16-byte aligned at every external call. The epilogue
+restores the stack and preserved registers before returning zero in `%eax`.
+
+`getchar` returns an `int` in `%eax`. The backend compares the full value with
+`EOF` before storing `%al`; EOF becomes zero. `IR_PUT` zero-extends the current
+cell into `%edi`, the first integer argument register, before calling
+`putchar@PLT`.
+
+#### Immediate and branch lowering
+
+`IR_MOVE` uses a direct `addq` or `subq` immediate for magnitudes through
+`INT32_MAX`. Larger magnitudes are loaded into `%r11` with `movabsq` and then
+applied with a register operation. `IR_ADD` and `IR_SET` emit byte-sized
+operations, so cell values retain modulo-256 semantics. Loop tests compare the
+current byte with zero and branch with `je` or `jne`.
+
+#### Lowering summary
+
+| IR operation | Strategy |
+|---|---|
+| `IR_ADD` | Add a normalized byte immediate to the current cell |
+| `IR_MOVE` | Direct signed immediate when encodable; otherwise use `%r11` |
+| `IR_GET` | Call `getchar@PLT`, map EOF to zero, store `%al` |
+| `IR_PUT` | Zero-extend the byte into `%edi`, call `putchar@PLT` |
+| `IR_SET` | Store an immediate byte |
+| Loop tests | Compare the byte with zero, then use `je` or `jne` |
+
 ## Platform-specific requirements
 
 ### macOS
@@ -578,6 +758,23 @@ _bfc_tape
 - AArch64 normally follows AAPCS64
 - ELF section and relocation syntax must be used
 - Position-independent executable defaults may affect address materialization and linking
+
+The Linux backends currently emit assembly and do not invoke the linker
+themselves. A Linux toolchain must provide the target assembler and C runtime
+when assembling and linking generated programs. For example, Clang's
+integrated assembler can validate both Linux targets from another host:
+
+```bash
+bfc -S --target x86_64-unknown-linux-gnu hello.bf -o hello.x86_64.s
+clang -target x86_64-linux-gnu -c hello.x86_64.s -o hello.x86_64.o
+
+bfc -S --target aarch64-unknown-linux-gnu hello.bf -o hello.aarch64.s
+clang -target aarch64-linux-gnu -c hello.aarch64.s -o hello.aarch64.o
+```
+
+Assembly validation does not prove that a generated program links or runs.
+Link and execute the output on a matching Linux host, container, VM, or
+emulator before treating a backend as target-native validated.
 
 ### Windows
 
