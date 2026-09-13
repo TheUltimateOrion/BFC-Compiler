@@ -560,6 +560,72 @@ _bfc_tape
 | `IR_SET` | Store an immediate byte |
 | Loop tests | Compare the byte with zero, then use `je` or `jne` |
 
+### Linux AArch64
+
+#### Target identity
+
+```text
+aarch64-unknown-linux-gnu
+BFC_ARCH_AARCH64
+BFC_OS_LINUX
+ELF
+GNU AArch64 assembly syntax
+```
+
+#### Register plan
+
+| Register | Role |
+|---|---|
+| `x19` | Tape pointer; callee-saved by AAPCS64 |
+| `x16` | Scratch register |
+| `w0` | Integer argument and return value |
+| `x29` | Frame pointer |
+| `x30` | Link register |
+
+#### Lowering summary
+
+| IR operation | Strategy |
+|---|---|
+| `IR_ADD` | Load byte, add normalized immediate, store byte |
+| `IR_MOVE` | Direct immediate up to 4095; otherwise materialize in `x16` |
+| `IR_GET` | Call `getchar`, map EOF to zero, store low byte |
+| `IR_PUT` | Load byte into `w0`, call `putchar` |
+| `IR_SET` | Store `wzr` for zero or an immediate byte |
+| Loop tests | `cbz` and `cbnz` |
+
+### Linux x86-64
+
+#### Target identity
+
+```text
+x86_64-unknown-linux-gnu
+BFC_ARCH_X86_64
+BFC_OS_LINUX
+ELF
+GNU AT&T assembly syntax
+```
+
+#### Register plan
+
+| Register | Role |
+|---|---|
+| `%rbx` | Tape pointer; callee-saved by the System V AMD64 ABI |
+| `%r11` | Large-immediate scratch |
+| `%eax` | Return value and input temporary |
+| `%edi` | First integer argument |
+| `%rbp` | Frame pointer |
+
+#### Lowering summary
+
+| IR operation | Strategy |
+|---|---|
+| `IR_ADD` | Add a normalized byte immediate to the current cell |
+| `IR_MOVE` | Direct signed immediate when encodable; otherwise use `%r11` |
+| `IR_GET` | Call `getchar@PLT`, map EOF to zero, store `%al` |
+| `IR_PUT` | Zero-extend the byte into `%edi`, call `putchar@PLT` |
+| `IR_SET` | Store an immediate byte |
+| Loop tests | Compare the byte with zero, then use `je` or `jne` |
+
 ## Platform-specific requirements
 
 ### macOS

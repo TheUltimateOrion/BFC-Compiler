@@ -2064,6 +2064,16 @@ static const bfc_backend_t* bfc_backend_select(bfc_target_t target)
         return &BFC_BACKEND_MACOS_X86_64;
     }
 
+    if (target.arch == BFC_ARCH_AARCH64 && target.os == BFC_OS_LINUX)
+    {
+        return &BFC_BACKEND_LINUX_AARCH64;
+    }
+
+    if (target.arch == BFC_ARCH_X86_64 && target.os == BFC_OS_LINUX)
+    {
+        return &BFC_BACKEND_LINUX_X86_64;
+    }
+
     return nullptr;
 }
 
@@ -2786,6 +2796,351 @@ const bfc_backend_t BFC_BACKEND_MACOS_X86_64 = {
     .emit_op_set       = macos_x86_64_emit_op_set,
     .emit_loop_test_z  = macos_x86_64_emit_loop_test_z,
     .emit_loop_test_nz = macos_x86_64_emit_loop_test_nz,
+};
+
+/** @} */
+/* ==========================================================================
+ * bfc_backend_linux_aarch64.c
+ * ========================================================================== */
+/**
+ * @defgroup linux_aarch64_backend Linux AArch64 backend
+ * @internal
+ * @{
+ * Linux AArch64 ELF assembly backend.
+ */
+static bfc_error_t linux_aarch64_emit_load_u64(bfc_asm_t* asm_prog, uint64_t value)
+{
+    bfc_error_t err
+        = bfc_codegen_emitf(asm_prog, "    movz x16, #%u\n", (unsigned) (value & UINT64_C(0xffff)));
+
+    if (err.code != ERR_OK)
+    {
+        return err;
+    }
+
+    for (uint16_t shift = 16; shift < 64; shift += 16)
+    {
+        const uint16_t part = (uint16_t) ((value >> shift) & UINT64_C(0xffff));
+
+        if (part != 0)
+        {
+            err = bfc_codegen_emitf(
+                asm_prog, "    movk x16, #%u, lsl #%u\n", (unsigned) part, (unsigned) shift
+            );
+
+            if (err.code != ERR_OK)
+            {
+                return err;
+            }
+        }
+    }
+
+    return BFC_ERR_OK;
+}
+
+static bfc_error_t linux_aarch64_emit_header(bfc_asm_t* asm_prog)
+{
+    return bfc_codegen_emit_text(asm_prog, ".text\n.p2align 2\n");
+}
+
+static bfc_error_t linux_aarch64_emit_data_section(bfc_asm_t* asm_prog)
+{
+    return bfc_codegen_emitf(
+        asm_prog,
+        ".section .bss\n"
+        ".balign 16\n"
+        ".bfc_tape:\n"
+        "    .skip %zu\n",
+        BFC_TAPE_SIZE
+    );
+}
+
+static bfc_error_t linux_aarch64_emit_symbol(bfc_asm_t* asm_prog)
+{
+    return bfc_codegen_emit_text(
+        asm_prog, ".text\n"
+                  ".global main\n"
+                  ".type main, %function\n"
+                  ".p2align 2\n"
+                  "main:\n"
+                  "    stp x29, x30, [sp, #-32]!\n"
+                  "    str x19, [sp, #16]\n"
+                  "    mov x29, sp\n"
+                  "\n"
+                  "    adrp x19, .bfc_tape\n"
+                  "    add  x19, x19, :lo12:.bfc_tape\n"
+    );
+}
+
+static bfc_error_t linux_aarch64_emit_end(bfc_asm_t* asm_prog)
+{
+    return bfc_codegen_emit_text(
+        asm_prog, "\n"
+                  "    mov w0, #0\n"
+                  "    ldr x19, [sp, #16]\n"
+                  "    ldp x29, x30, [sp], #32\n"
+                  "    ret\n"
+                  "    .size main, .-main\n"
+    );
+}
+
+static bfc_error_t linux_aarch64_emit_op_add(bfc_asm_t* asm_prog, int64_t imm)
+{
+    const uint8_t normalized = (uint8_t) imm;
+
+    if (normalized == 0)
+    {
+        return BFC_ERR_OK;
+    }
+
+    return bfc_codegen_emitf(
+        asm_prog,
+        "    ldrb w16, [x19]\n"
+        "    add  w16, w16, #%u\n"
+        "    strb w16, [x19]\n",
+        (unsigned) normalized
+    );
+}
+
+static bfc_error_t linux_aarch64_emit_op_move(bfc_asm_t* asm_prog, int64_t imm)
+{
+    if (imm == 0)
+    {
+        return BFC_ERR_OK;
+    }
+
+    const uint64_t magnitude = imm < 0 ? UINT64_C(0) - (uint64_t) imm : (uint64_t) imm;
+
+    if (magnitude <= 4095)
+    {
+        return bfc_codegen_emitf(
+            asm_prog,
+            imm < 0 ? "    sub x19, x19, #%" PRIu64 "\n" : "    add x19, x19, #%" PRIu64 "\n",
+            magnitude
+        );
+    }
+
+    bfc_error_t err = linux_aarch64_emit_load_u64(asm_prog, magnitude);
+
+    if (err.code != ERR_OK)
+    {
+        return err;
+    }
+
+    return bfc_codegen_emit_text(
+        asm_prog, imm < 0 ? "    sub x19, x19, x16\n" : "    add x19, x19, x16\n"
+    );
+}
+
+static bfc_error_t linux_aarch64_emit_op_get(bfc_asm_t* asm_prog)
+{
+    return bfc_codegen_emit_text(
+        asm_prog, "    bl   getchar\n"
+                  "    cmn  w0, #1\n"
+                  "    csel w0, wzr, w0, eq\n"
+                  "    strb w0, [x19]\n"
+    );
+}
+
+static bfc_error_t linux_aarch64_emit_op_put(bfc_asm_t* asm_prog)
+{
+    return bfc_codegen_emit_text(asm_prog, "    ldrb w0, [x19]\n    bl   putchar\n");
+}
+
+static bfc_error_t linux_aarch64_emit_op_set(bfc_asm_t* asm_prog, int64_t imm)
+{
+    const uint8_t normalized = (uint8_t) imm;
+
+    if (normalized == 0)
+    {
+        return bfc_codegen_emit_text(asm_prog, "    strb wzr, [x19]\n");
+    }
+
+    return bfc_codegen_emitf(
+        asm_prog,
+        "    mov  w16, #%u\n"
+        "    strb w16, [x19]\n",
+        (unsigned) normalized
+    );
+}
+
+static bfc_error_t linux_aarch64_emit_loop_test_z(bfc_asm_t* asm_prog, const char* label)
+{
+    return bfc_codegen_emitf(asm_prog, "    ldrb w16, [x19]\n    cbz  w16, %s\n", label);
+}
+
+static bfc_error_t linux_aarch64_emit_loop_test_nz(bfc_asm_t* asm_prog, const char* label)
+{
+    return bfc_codegen_emitf(asm_prog, "    ldrb w16, [x19]\n    cbnz w16, %s\n", label);
+}
+
+const bfc_backend_t BFC_BACKEND_LINUX_AARCH64 = {
+    .target = {
+        .arch = BFC_ARCH_AARCH64,
+        .os   = BFC_OS_LINUX,
+    },
+    .emit_header       = linux_aarch64_emit_header,
+    .emit_data_section = linux_aarch64_emit_data_section,
+    .emit_symbol       = linux_aarch64_emit_symbol,
+    .emit_end          = linux_aarch64_emit_end,
+    .emit_op_add       = linux_aarch64_emit_op_add,
+    .emit_op_move      = linux_aarch64_emit_op_move,
+    .emit_op_get       = linux_aarch64_emit_op_get,
+    .emit_op_put       = linux_aarch64_emit_op_put,
+    .emit_op_set       = linux_aarch64_emit_op_set,
+    .emit_loop_test_z  = linux_aarch64_emit_loop_test_z,
+    .emit_loop_test_nz = linux_aarch64_emit_loop_test_nz,
+};
+
+/** @} */
+/* ==========================================================================
+ * bfc_backend_linux_x86_64.c
+ * ========================================================================== */
+/** @defgroup linux_x86_64_backend Linux x86-64 backend @internal @{
+ * Linux x86-64 ELF assembly backend in AT&T syntax.
+ */
+static bfc_error_t linux_x86_64_emit_load_u64(bfc_asm_t* asm_prog, uint64_t value)
+{
+    return bfc_codegen_emitf(asm_prog, "    movabsq $0x%016" PRIx64 ", %%r11\n", value);
+}
+
+static bfc_error_t linux_x86_64_emit_header(bfc_asm_t* asm_prog)
+{
+    return bfc_codegen_emit_text(asm_prog, ".text\n.p2align 4\n");
+}
+
+static bfc_error_t linux_x86_64_emit_data_section(bfc_asm_t* asm_prog)
+{
+    return bfc_codegen_emitf(
+        asm_prog,
+        ".section .bss\n"
+        ".balign 16\n"
+        ".bfc_tape:\n"
+        "    .zero %zu\n",
+        BFC_TAPE_SIZE
+    );
+}
+
+static bfc_error_t linux_x86_64_emit_symbol(bfc_asm_t* asm_prog)
+{
+    return bfc_codegen_emit_text(
+        asm_prog, ".text\n"
+                  ".globl main\n"
+                  ".type main, @function\n"
+                  ".p2align 4\n"
+                  "main:\n"
+                  "    pushq %rbp\n"
+                  "    movq  %rsp, %rbp\n"
+                  "    pushq %rbx\n"
+                  "    subq  $8, %rsp\n"
+                  "\n"
+                  "    leaq  .bfc_tape(%rip), %rbx\n"
+    );
+}
+
+static bfc_error_t linux_x86_64_emit_end(bfc_asm_t* asm_prog)
+{
+    return bfc_codegen_emit_text(
+        asm_prog, "\n"
+                  "    xorl  %eax, %eax\n"
+                  "    addq  $8, %rsp\n"
+                  "    popq  %rbx\n"
+                  "    popq  %rbp\n"
+                  "    ret\n"
+                  "    .size main, .-main\n"
+    );
+}
+
+static bfc_error_t linux_x86_64_emit_op_add(bfc_asm_t* asm_prog, int64_t imm)
+{
+    const uint8_t normalized = (uint8_t) imm;
+
+    if (normalized == 0)
+    {
+        return BFC_ERR_OK;
+    }
+
+    return bfc_codegen_emitf(asm_prog, "    addb $%u, (%%rbx)\n", (unsigned) normalized);
+}
+
+static bfc_error_t linux_x86_64_emit_op_move(bfc_asm_t* asm_prog, int64_t imm)
+{
+    if (imm == 0)
+    {
+        return BFC_ERR_OK;
+    }
+
+    const uint64_t magnitude = imm < 0 ? UINT64_C(0) - (uint64_t) imm : (uint64_t) imm;
+
+    if (magnitude <= INT32_MAX)
+    {
+        return bfc_codegen_emitf(
+            asm_prog, imm < 0 ? "    subq $%" PRIu64 ", %%rbx\n" : "    addq $%" PRIu64 ", %%rbx\n",
+            magnitude
+        );
+    }
+
+    bfc_error_t err = linux_x86_64_emit_load_u64(asm_prog, magnitude);
+
+    if (err.code != ERR_OK)
+    {
+        return err;
+    }
+
+    return bfc_codegen_emit_text(
+        asm_prog, imm < 0 ? "    subq %r11, %rbx\n" : "    addq %r11, %rbx\n"
+    );
+}
+
+static bfc_error_t linux_x86_64_emit_op_get(bfc_asm_t* asm_prog)
+{
+    return bfc_codegen_emit_text(
+        asm_prog, "    call getchar@PLT\n"
+                  "    xorl %edx, %edx\n"
+                  "    cmpl $-1, %eax\n"
+                  "    cmove %edx, %eax\n"
+                  "    movb %al, (%rbx)\n"
+    );
+}
+
+static bfc_error_t linux_x86_64_emit_op_put(bfc_asm_t* asm_prog)
+{
+    return bfc_codegen_emit_text(asm_prog, "    movzbl (%rbx), %edi\n    call putchar@PLT\n");
+}
+
+static bfc_error_t linux_x86_64_emit_op_set(bfc_asm_t* asm_prog, int64_t imm)
+{
+    const uint8_t normalized = (uint8_t) imm;
+
+    return bfc_codegen_emitf(asm_prog, "    movb $%u, (%%rbx)\n", (unsigned) normalized);
+}
+
+static bfc_error_t linux_x86_64_emit_loop_test_z(bfc_asm_t* asm_prog, const char* label)
+{
+    return bfc_codegen_emitf(asm_prog, "    cmpb $0, (%%rbx)\n    je %s\n", label);
+}
+
+static bfc_error_t linux_x86_64_emit_loop_test_nz(bfc_asm_t* asm_prog, const char* label)
+{
+    return bfc_codegen_emitf(asm_prog, "    cmpb $0, (%%rbx)\n    jne %s\n", label);
+}
+
+const bfc_backend_t BFC_BACKEND_LINUX_X86_64 = {
+    .target = {
+        .arch = BFC_ARCH_X86_64,
+        .os   = BFC_OS_LINUX,
+    },
+    .emit_header       = linux_x86_64_emit_header,
+    .emit_data_section = linux_x86_64_emit_data_section,
+    .emit_symbol       = linux_x86_64_emit_symbol,
+    .emit_end          = linux_x86_64_emit_end,
+    .emit_op_add       = linux_x86_64_emit_op_add,
+    .emit_op_move      = linux_x86_64_emit_op_move,
+    .emit_op_get       = linux_x86_64_emit_op_get,
+    .emit_op_put       = linux_x86_64_emit_op_put,
+    .emit_op_set       = linux_x86_64_emit_op_set,
+    .emit_loop_test_z  = linux_x86_64_emit_loop_test_z,
+    .emit_loop_test_nz = linux_x86_64_emit_loop_test_nz,
 };
 
 /** @} */

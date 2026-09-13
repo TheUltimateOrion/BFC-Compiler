@@ -12,8 +12,11 @@ BFC currently supports assembly generation for:
 
 - `aarch64-apple-darwin`
 - `x86_64-apple-darwin`
+- `aarch64-unknown-linux-gnu`
+- `x86_64-unknown-linux-gnu`
 
-The target parser also recognizes Linux and Windows target triples, but those backends are not yet implemented.
+The target parser also recognizes Windows target triples, but those backends are
+not yet implemented.
 
 The compiler currently emits assembly with `-S`. The final assemble-and-link stage that produces a native executable is planned but not yet complete.
 
@@ -42,7 +45,7 @@ To build BFC:
   - Clang is currently the primary tested compiler
   - GCC may work if it supports the required C23 and GNU attribute features
 - GNU Make or a compatible `make`
-- macOS for executing and linking the currently implemented backends
+- macOS or Linux for executing and linking the currently implemented backends
 
 Optional:
 
@@ -256,8 +259,8 @@ For complete CLI documentation, see [`docs/cli.md`](docs/cli.md).
 |---|---|
 | `aarch64-apple-darwin` | Implemented |
 | `x86_64-apple-darwin` | Implemented |
-| `aarch64-unknown-linux-gnu` | Recognized; backend not implemented |
-| `x86_64-unknown-linux-gnu` | Recognized; backend not implemented |
+| `aarch64-unknown-linux-gnu` | Implemented |
+| `x86_64-unknown-linux-gnu` | Implemented |
 | `aarch64-pc-windows-msvc` | Recognized; backend not implemented |
 | `x86_64-pc-windows-msvc` | Recognized; backend not implemented |
 | `i386-pc-windows-msvc` | Recognized; backend not implemented |
@@ -353,8 +356,6 @@ creates `v0.1.2`.
 ## Roadmap
 
 - Add the assemble-and-link stage
-- Add Linux x86-64 code generation
-- Add Linux AArch64 code generation
 - Add Windows code-generation backends
 - Expand integration and regression tests
 - Add additional Brainfuck-specific optimizations

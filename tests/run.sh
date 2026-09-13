@@ -7,7 +7,17 @@ if [ "$#" -eq 0 ]; then
     exit 2
 fi
 
-target=aarch64-apple-darwin
+case "$(uname -s):$(uname -m)" in
+    Darwin:arm64) target=aarch64-apple-darwin ;;
+    Darwin:x86_64) target=x86_64-apple-darwin ;;
+    Linux:aarch64) target=aarch64-unknown-linux-gnu ;;
+    Linux:x86_64) target=x86_64-unknown-linux-gnu ;;
+    *)
+        echo "unsupported test host: $(uname -s) $(uname -m)" >&2
+        exit 1
+        ;;
+esac
+
 root_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/bfc-tests.XXXXXX")
 
