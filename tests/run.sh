@@ -43,10 +43,15 @@ for compiler do
                 grep -q "_bfc_tape:" "$baseline"
                 grep -q "_putchar" "$baseline"
                 ;;
-            *-unknown-linux-gnu)
+            x86_64-unknown-linux-gnu)
                 grep -q "\.section \.bss" "$baseline"
                 grep -q "\.bfc_tape:" "$baseline"
                 grep -q "putchar@PLT" "$baseline"
+                ;;
+            aarch64-unknown-linux-gnu)
+                grep -q "\.section \.bss" "$baseline"
+                grep -q "\.bfc_tape:" "$baseline"
+                grep -q "bl   putchar" "$baseline"
                 ;;
             *)
                 echo "unsupported regression target: $target" >&2
