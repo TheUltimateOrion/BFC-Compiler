@@ -70,11 +70,18 @@ Release build:
 make release
 ```
 
+Build the single-file compiler:
+
+```bash
+make onefile
+```
+
 Generated binaries are placed under:
 
 ```text
 build/debug/bfc
 build/release/bfc
+build/debug/bfc_onefile
 ```
 
 Clean build output:
@@ -105,6 +112,19 @@ make tidy
 
 These targets are optional developer tools and are not part of the normal
 compiler build.
+
+### Regression tests
+
+Run the compiler regression tests:
+
+```bash
+make test
+```
+
+The test runner checks stable generated assembly for `tests/hello.bf`, verifies
+that another program produces assembly, confirms malformed brackets produce an
+error, and runs those checks against both the modular and single-file compiler
+builds. The same tests run in the Unix jobs of the cross-platform workflow.
 
 ## Automated builds
 

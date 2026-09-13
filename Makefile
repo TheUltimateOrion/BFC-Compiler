@@ -16,12 +16,14 @@ CONFIG_DIR    := $(BUILD_ROOT)/$(CONFIG)
 OBJ_DIR       := $(CONFIG_DIR)/obj
 DEP_DIR       := $(CONFIG_DIR)/dep
 TARGET        := $(CONFIG_DIR)/bfc
+ONEFILE_TARGET := $(CONFIG_DIR)/bfc_onefile
 
 SRCS          := $(sort $(shell find $(SRC_DIR) -name '*.c'))
 HEADERS       := $(sort $(shell find $(INCLUDE_DIR) -name '*.h'))
 OBJS          := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRCS))
 DEPS          := $(patsubst $(SRC_DIR)/%.c,$(DEP_DIR)/%.d,$(SRCS))
 FORMAT_FILES  := $(SRCS) $(HEADERS)
+FORMAT_FILES  += $(wildcard bfc_onefile.c)
 
 VERSION_FILE  := VERSION
 VERSION       := $(strip $(shell cat $(VERSION_FILE)))
@@ -66,7 +68,7 @@ LDLIBS += -lm
 
 # Targets
 
-.PHONY: all debug release clean docs clean-docs format format-check tidy
+.PHONY: all debug release onefile test clean docs clean-docs format format-check tidy
 
 all: $(TARGET)
 
@@ -75,6 +77,12 @@ debug:
 
 release:
 	$(MAKE) CONFIG=release all
+
+onefile: $(ONEFILE_TARGET)
+
+test:
+	$(MAKE) CONFIG=debug all onefile
+	sh tests/run.sh $(TARGET) $(ONEFILE_TARGET)
 
 docs:
 	@command -v $(DOXYGEN) >/dev/null 2>&1 || { \
@@ -116,6 +124,10 @@ clean-docs:
 $(TARGET): $(OBJS)
 	@mkdir -p $(dir $@)
 	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
+
+$(ONEFILE_TARGET): bfc_onefile.c $(VERSION_FILE)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $< -o $@ $(LDFLAGS) $(LDLIBS)
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(dir $@) $(dir $(DEP_DIR)/$*.d)

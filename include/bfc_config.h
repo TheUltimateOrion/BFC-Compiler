@@ -3,7 +3,8 @@
  * @brief Compiler-wide configuration constants.
  *
  * @details
- * Defines the Brainfuck machine model and initial capacities shared by the frontend and code-generation backends.
+ * Defines the Brainfuck machine model and initial capacities shared by the frontend and
+ * code-generation backends.
  */
 #ifndef BFC_CONFIG_H
 #define BFC_CONFIG_H

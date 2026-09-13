@@ -3,7 +3,8 @@
  * @brief IR construction, optimization, and destruction.
  *
  * @details
- * Builds nested blocks, grows typed arrays safely, folds repeated operations, recognizes clear loops, and manages recursive ownership.
+ * Builds nested blocks, grows typed arrays safely, folds repeated operations, recognizes clear
+ * loops, and manages recursive ownership.
  */
 #include "bfc_ir.h"
 
@@ -28,6 +29,7 @@ typedef struct
     size_t length;
     size_t capacity;
 } bfc_ir_stack_t;
+
 /**
  * @brief Constructs an immediate IR instruction.
  */
@@ -39,6 +41,7 @@ bfc_ir_instr_t bfc_ir_make_imm_instr(bfc_ir_token_type_t const ir_token_type, in
         .val = {imm},
     };
 }
+
 /**
  * @brief Constructs an instruction with a zeroed operand union.
  */
@@ -49,6 +52,7 @@ bfc_ir_instr_t bfc_ir_make_zero_instr(bfc_ir_token_type_t const ir_token_type)
         .op = ir_token_type,
     };
 }
+
 /**
  * @brief Builds a nested IR tree using an explicit stack of active loop blocks.
  */
@@ -229,6 +233,7 @@ end:
 
     return err;
 }
+
 /**
  * @brief Combines adjacent arithmetic/movement instructions and converts clear loops to `IR_SET 0`.
  */
@@ -333,6 +338,7 @@ end:
 
     return err;
 }
+
 /**
  * @brief Recursively releases an IR block and all owned loop bodies.
  */
