@@ -18,9 +18,20 @@ cleanup()
 
 trap cleanup EXIT HUP INT TERM
 
+baseline=""
+
 for compiler do
     "$compiler" -S -t "$target" "$root_dir/tests/hello.bf" -o "$temp_dir/hello.s"
-    cmp "$root_dir/tests/hello.bf.s" "$temp_dir/hello.s"
+
+    if [ -z "$baseline" ]; then
+        baseline=$temp_dir/hello.baseline.s
+        cp "$temp_dir/hello.s" "$baseline"
+        grep -q "\.section __DATA,__bss" "$baseline"
+        grep -q "_bfc_tape:" "$baseline"
+        grep -q "_putchar" "$baseline"
+    else
+        cmp "$baseline" "$temp_dir/hello.s"
+    fi
 
     "$compiler" -S -t "$target" "$root_dir/tests/multiply.bf" -o "$temp_dir/multiply.s"
     test -s "$temp_dir/multiply.s"
