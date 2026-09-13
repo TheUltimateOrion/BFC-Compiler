@@ -143,9 +143,9 @@ jobs:
           set -euxo pipefail
           mkdir -p dist/package
           cp build/release/bfc dist/package/bfc
-          cp LICENSE VERSION README.md dist/package/
+          cp LICENSE VERSION README.md CHANGELOG.md dist/package/
           tar -C dist/package -czf "dist/${{ matrix.archive }}" \
-            bfc LICENSE VERSION README.md
+            bfc LICENSE VERSION README.md CHANGELOG.md
 
       - name: Build and package Windows release
         if: matrix.platform == 'windows'
@@ -198,6 +198,7 @@ jobs:
           Copy-Item LICENSE dist\package\LICENSE
           Copy-Item VERSION dist\package\VERSION
           Copy-Item README.md dist\package\README.md
+          Copy-Item CHANGELOG.md dist\package\CHANGELOG.md
 
           Compress-Archive `
             -Path dist\package\* `

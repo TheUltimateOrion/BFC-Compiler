@@ -298,6 +298,7 @@ Project documentation is available under `docs/`:
 - [`docs/architecture.md`](docs/architecture.md)
 - [`docs/backends.md`](docs/backends.md)
 - [`docs/cli.md`](docs/cli.md)
+- [`CHANGELOG.md`](CHANGELOG.md)
 
 Generate Doxygen HTML documentation with:
 
@@ -313,6 +314,17 @@ docs/doxygen/html/
 
 The generated HTML is not committed to the repository.
 
+## Releases
+
+Update `VERSION` and record the changes under the matching section in
+[`CHANGELOG.md`](CHANGELOG.md), then merge the change into `main`. The version
+workflow validates `VERSION`, creates the matching annotated `v*` tag, and
+pushes it. The release workflow then builds packages for all supported host
+platforms and publishes the GitHub release automatically.
+
+The release tag must match `VERSION` exactly. For example, `VERSION=0.1.2`
+creates `v0.1.2`.
+
 ## Project structure
 
 ```text
@@ -321,8 +333,10 @@ The generated HTML is not committed to the repository.
 │   └── workflows/
 │       ├── build.yml
 │       ├── docs.yml
-│       └── release.yml
+│       ├── release.yml
+│       └── version-release.yml
 ├── docs/
+├── CHANGELOG.md
 ├── examples/
 ├── include/
 ├── src/
