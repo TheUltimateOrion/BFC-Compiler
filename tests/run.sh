@@ -36,9 +36,23 @@ for compiler do
     if [ -z "$baseline" ]; then
         baseline=$temp_dir/hello.baseline.s
         cp "$temp_dir/hello.s" "$baseline"
-        grep -q "\.section __DATA,__bss" "$baseline"
-        grep -q "_bfc_tape:" "$baseline"
-        grep -q "_putchar" "$baseline"
+
+        case "$target" in
+            *-apple-darwin)
+                grep -q "\.section __DATA,__bss" "$baseline"
+                grep -q "_bfc_tape:" "$baseline"
+                grep -q "_putchar" "$baseline"
+                ;;
+            *-unknown-linux-gnu)
+                grep -q "\.section \.bss" "$baseline"
+                grep -q "\.bfc_tape:" "$baseline"
+                grep -q "putchar@PLT" "$baseline"
+                ;;
+            *)
+                echo "unsupported regression target: $target" >&2
+                exit 1
+                ;;
+        esac
     else
         cmp "$baseline" "$temp_dir/hello.s"
     fi
