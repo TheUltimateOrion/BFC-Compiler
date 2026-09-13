@@ -796,7 +796,7 @@ void bfc_log_error(bfc_error_t const err, const struct bfc_program_t* const prog
 {
     if (err.code == ERR_MISSING_BRACKET || err.code == ERR_MISMATCHED_BRACKET)
     {
-        fprintf(
+        fprintf( // NOLINT(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
             stderr,
             COL_INFO "%s[%" PRIu32 ", %" PRIu32 "]: " COL_ERROR "%s" COL_OFF COL_INFO
                      ": %s\n" COL_OFF,
@@ -810,9 +810,13 @@ void bfc_log_error(bfc_error_t const err, const struct bfc_program_t* const prog
         {
             int line_num_width = (err.token.line > 0) ? (int) log10(err.token.line) + 1 : 1;
 
-            fprintf(stderr, "   %zu | %s\n", (size_t) err.token.line, line_buf);
+            fprintf( // NOLINT(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
+                stderr, "   %zu | %s\n", (size_t) err.token.line, line_buf
+            );
 
-            fprintf(stderr, "   %*s | %*c\n", line_num_width, "", (int) err.token.col, '^');
+            fprintf( // NOLINT(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
+                stderr, "   %*s | %*c\n", line_num_width, "", (int) err.token.col, '^'
+            );
 
             free(line_buf);
         }
@@ -820,7 +824,7 @@ void bfc_log_error(bfc_error_t const err, const struct bfc_program_t* const prog
         return;
     }
 
-    fprintf(
+    fprintf( // NOLINT(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
         stderr, COL_INFO "bfc: " COL_ERROR "%s" COL_OFF COL_INFO ": %s\n" COL_OFF,
         bfc_get_error_code(err.code), err.msg
     );
@@ -1275,7 +1279,9 @@ bfc_error_t bfc_program_create(bfc_program_t** program, char const* file_path)
 {
     FILE* file_handle;
 
-    if ((file_handle = fopen(file_path, "rb")))
+    file_handle = fopen(file_path, "rb");
+
+    if (file_handle)
     {
         bfc_program_t* prog = nullptr;
         prog                = BFC_CALLOC_ARRAY(prog, 1);
@@ -1360,7 +1366,8 @@ bfc_error_t bfc_program_create(bfc_program_t** program, char const* file_path)
             return bfc_make_errorf(ERR_IO, "Unable to read from file '%s'!", file_path);
         }
 
-        prog->buffer[end] = '\0';
+        prog->buffer[prog->file_size]  // NOLINT(clang-analyzer-security.ArrayBound)
+            = '\0';
 
         fclose(file_handle);
 
@@ -1447,7 +1454,7 @@ char* bfc_program_getline(bfc_program_t const* const program, size_t const n)
 
     size_t      current_line = 1;
     char const* start        = program->buffer;
-    char const* end          = program->buffer;
+    char const* end;
 
     while (current_line < n)
     {
@@ -1844,7 +1851,7 @@ bfc_error_t bfc_ir_create(bfc_ir_block_t** root_block, bfc_token_stream_t const*
         .length   = 0,
     };
 
-    stack.blocks = BFC_CALLOC_ARRAY(stack.blocks, stack.capacity);
+    stack.blocks = (bfc_ir_block_t**) BFC_CALLOC_ARRAY(stack.blocks, stack.capacity);
     if (!stack.blocks)
     {
         goto end;
@@ -1881,7 +1888,9 @@ bfc_error_t bfc_ir_create(bfc_ir_block_t** root_block, bfc_token_stream_t const*
                 goto end;
             }
 
-            bfc_ir_block_t** tmp = BFC_REALLOC_ARRAY(stack.blocks, new_capacity);
+            bfc_ir_block_t** tmp = (bfc_ir_block_t**) bfc_realloc_array(
+                (void*) stack.blocks, new_capacity, sizeof(*stack.blocks)
+            );
 
             if (!tmp)
             {
@@ -2015,7 +2024,7 @@ end:
             bfc_ir_destroy(&stack.blocks[0]);
         }
 
-        free(stack.blocks);
+        free((void*) stack.blocks);
     }
 
     return err;
@@ -2058,24 +2067,25 @@ bfc_error_t bfc_ir_optimize_rep(bfc_ir_block_t** ir_block)
         goto end;
     }
 
-    bfc_ir_instr_t prev_instr  = (*ir_block)->instructions[0];
-    int64_t        instr_delta = 0;
-    size_t         i           = 0;
+    int64_t instr_delta = 0;
+    size_t  i           = 0;
     while (i < (*ir_block)->length)
     {
         if ((*ir_block)->instructions[i].op == IR_ADD || (*ir_block)->instructions[i].op == IR_MOVE)
         {
+            bfc_ir_token_type_t const op = (*ir_block)->instructions[i].op;
+
             do
             {
                 instr_delta += (*ir_block)->instructions[i].val.imm;
-                prev_instr = (*ir_block)->instructions[i++];
+                ++i;
             }
-            while (i < (*ir_block)->length && (*ir_block)->instructions[i].op == prev_instr.op);
+            while (i < (*ir_block)->length && (*ir_block)->instructions[i].op == op);
 
             if (instr_delta != 0)
             {
                 optimized_block->instructions[optimized_block->length++]
-                    = bfc_ir_make_imm_instr(prev_instr.op, instr_delta);
+                    = bfc_ir_make_imm_instr(op, instr_delta);
             }
 
             instr_delta = 0;
@@ -2110,7 +2120,7 @@ bfc_error_t bfc_ir_optimize_rep(bfc_ir_block_t** ir_block)
 
             optimized_block->instructions[optimized_block->length++] = (*ir_block)->instructions[i];
 
-            prev_instr = (*ir_block)->instructions[i++];
+            ++i;
         }
     }
 

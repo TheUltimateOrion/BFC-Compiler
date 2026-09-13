@@ -126,7 +126,7 @@ void bfc_log_error(bfc_error_t const err, const struct bfc_program_t* const prog
 {
     if (err.code == ERR_MISSING_BRACKET || err.code == ERR_MISMATCHED_BRACKET)
     {
-        fprintf(
+        fprintf( // NOLINT(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
             stderr,
             COL_INFO "%s[%" PRIu32 ", %" PRIu32 "]: " COL_ERROR "%s" COL_OFF COL_INFO
                      ": %s\n" COL_OFF,
@@ -140,9 +140,13 @@ void bfc_log_error(bfc_error_t const err, const struct bfc_program_t* const prog
         {
             int line_num_width = (err.token.line > 0) ? (int) log10(err.token.line) + 1 : 1;
 
-            fprintf(stderr, "   %zu | %s\n", (size_t) err.token.line, line_buf);
+            fprintf( // NOLINT(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
+                stderr, "   %zu | %s\n", (size_t) err.token.line, line_buf
+            );
 
-            fprintf(stderr, "   %*s | %*c\n", line_num_width, "", (int) err.token.col, '^');
+            fprintf( // NOLINT(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
+                stderr, "   %*s | %*c\n", line_num_width, "", (int) err.token.col, '^'
+            );
 
             free(line_buf);
         }
@@ -150,7 +154,7 @@ void bfc_log_error(bfc_error_t const err, const struct bfc_program_t* const prog
         return;
     }
 
-    fprintf(
+    fprintf( // NOLINT(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
         stderr, COL_INFO "bfc: " COL_ERROR "%s" COL_OFF COL_INFO ": %s\n" COL_OFF,
         bfc_get_error_code(err.code), err.msg
     );

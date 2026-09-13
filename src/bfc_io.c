@@ -23,7 +23,9 @@ bfc_error_t bfc_program_create(bfc_program_t** program, char const* file_path)
 {
     FILE* file_handle;
 
-    if ((file_handle = fopen(file_path, "rb")))
+    file_handle = fopen(file_path, "rb");
+
+    if (file_handle)
     {
         bfc_program_t* prog = nullptr;
         prog                = BFC_CALLOC_ARRAY(prog, 1);
@@ -104,7 +106,8 @@ bfc_error_t bfc_program_create(bfc_program_t** program, char const* file_path)
             return bfc_make_errorf(ERR_IO, "Unable to read from file '%s'!", file_path);
         }
 
-        prog->buffer[end] = '\0';
+        prog->buffer[prog->file_size]  // NOLINT(clang-analyzer-security.ArrayBound)
+            = '\0';
 
         fclose(file_handle);
 
@@ -180,7 +183,7 @@ char* bfc_program_getline(bfc_program_t const* const program, size_t const n)
 
     size_t      current_line = 1;
     char const* start        = program->buffer;
-    char const* end          = program->buffer;
+    char const* end;
 
     while (current_line < n)
     {

@@ -67,7 +67,7 @@ bfc_error_t bfc_ir_create(bfc_ir_block_t** root_block, bfc_token_stream_t const*
         .length   = 0,
     };
 
-    stack.blocks = BFC_CALLOC_ARRAY(stack.blocks, stack.capacity);
+    stack.blocks = (bfc_ir_block_t**) BFC_CALLOC_ARRAY(stack.blocks, stack.capacity);
     if (!stack.blocks)
     {
         goto end;
@@ -103,7 +103,9 @@ bfc_error_t bfc_ir_create(bfc_ir_block_t** root_block, bfc_token_stream_t const*
                 goto end;
             }
 
-            bfc_ir_block_t** tmp = BFC_REALLOC_ARRAY(stack.blocks, new_capacity);
+            bfc_ir_block_t** tmp = (bfc_ir_block_t**) bfc_realloc_array(
+                (void*) stack.blocks, new_capacity, sizeof(*stack.blocks)
+            );
 
             if (!tmp)
             {
@@ -228,7 +230,7 @@ end:
             bfc_ir_destroy(&stack.blocks[0]);
         }
 
-        free(stack.blocks);
+        free((void*) stack.blocks);
     }
 
     return err;
@@ -265,24 +267,25 @@ bfc_error_t bfc_ir_optimize_rep(bfc_ir_block_t** ir_block)
         goto end;
     }
 
-    bfc_ir_instr_t prev_instr  = (*ir_block)->instructions[0];
-    int64_t        instr_delta = 0;
-    size_t         i           = 0;
+    int64_t instr_delta = 0;
+    size_t  i           = 0;
     while (i < (*ir_block)->length)
     {
         if ((*ir_block)->instructions[i].op == IR_ADD || (*ir_block)->instructions[i].op == IR_MOVE)
         {
+            bfc_ir_token_type_t const op = (*ir_block)->instructions[i].op;
+
             do
             {
                 instr_delta += (*ir_block)->instructions[i].val.imm;
-                prev_instr = (*ir_block)->instructions[i++];
+                ++i;
             }
-            while (i < (*ir_block)->length && (*ir_block)->instructions[i].op == prev_instr.op);
+            while (i < (*ir_block)->length && (*ir_block)->instructions[i].op == op);
 
             if (instr_delta != 0)
             {
                 optimized_block->instructions[optimized_block->length++]
-                    = bfc_ir_make_imm_instr(prev_instr.op, instr_delta);
+                    = bfc_ir_make_imm_instr(op, instr_delta);
             }
 
             instr_delta = 0;
@@ -317,7 +320,7 @@ bfc_error_t bfc_ir_optimize_rep(bfc_ir_block_t** ir_block)
 
             optimized_block->instructions[optimized_block->length++] = (*ir_block)->instructions[i];
 
-            prev_instr = (*ir_block)->instructions[i++];
+            ++i;
         }
     }
 
