@@ -222,6 +222,11 @@ jobs:
     timeout-minutes: 10
 
     steps:
+      - name: Check out release source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.validate.outputs.release_tag }}
+
       - name: Download release packages
         uses: actions/download-artifact@v8
         with:
@@ -250,6 +255,29 @@ jobs:
             sha256sum --check SHA256SUMS
           )
 
+      - name: Prepare release notes
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.validate.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+
+          version="${RELEASE_TAG#v}"
+          awk -v heading="## [$version]" '
+            capture && /^## / && $0 != heading { exit }
+            $0 == heading { capture = 1 }
+            capture { print }
+          ' CHANGELOG.md > dist/RELEASE_NOTES.md
+
+          if [[ ! -s dist/RELEASE_NOTES.md ]]; then
+            gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
+              --method POST \
+              --field tag_name="$RELEASE_TAG" \
+              --field target_commitish="$RELEASE_TAG" \
+              --jq .body > dist/RELEASE_NOTES.md
+          fi
+
       - name: Create or update GitHub release
         shell: bash
         env:
@@ -260,13 +288,17 @@ jobs:
 
           if gh release view "$RELEASE_TAG" \
             --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$RELEASE_TAG" dist/* \
+            gh release upload "$RELEASE_TAG" dist/bfc-* dist/SHA256SUMS \
               --repo "$GITHUB_REPOSITORY" \
               --clobber
+            gh release edit "$RELEASE_TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --notes-file dist/RELEASE_NOTES.md \
+              --title "BFC $RELEASE_TAG"
           else
-            gh release create "$RELEASE_TAG" dist/* \
+            gh release create "$RELEASE_TAG" dist/bfc-* dist/SHA256SUMS \
               --repo "$GITHUB_REPOSITORY" \
               --verify-tag \
               --title "BFC $RELEASE_TAG" \
-              --generate-notes
+              --notes-file dist/RELEASE_NOTES.md
           fi

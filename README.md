@@ -322,8 +322,10 @@ The generated HTML is not committed to the repository.
 Update `VERSION` and record the changes under the matching section in
 [`CHANGELOG.md`](CHANGELOG.md), then merge the change into `main`. The version
 workflow validates `VERSION`, creates the matching annotated `v*` tag, and
-pushes it. The release workflow then builds packages for all supported host
-platforms and publishes the GitHub release automatically.
+pushes it. Creating any matching `v*` tag triggers the release workflow, which
+builds packages for all supported host platforms and uses the matching
+`CHANGELOG.md` section as the release notes. Legacy tags without a matching
+section receive GitHub-generated release notes.
 
 The release tag must match `VERSION` exactly. For example, `VERSION=0.1.2`
 creates `v0.1.2`.
