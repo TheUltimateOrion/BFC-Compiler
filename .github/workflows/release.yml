@@ -143,7 +143,13 @@ jobs:
           set -euxo pipefail
           mkdir -p dist/package
           cp build/release/bfc dist/package/bfc
-          cp LICENSE VERSION README.md CHANGELOG.md dist/package/
+          cp LICENSE VERSION README.md dist/package/
+          if [[ -f CHANGELOG.md ]]; then
+            cp CHANGELOG.md dist/package/CHANGELOG.md
+          else
+            printf '# Changelog\n\nNo repository changelog was present for this historical release.\n' \
+              > dist/package/CHANGELOG.md
+          fi
           tar -C dist/package -czf "dist/${{ matrix.archive }}" \
             bfc LICENSE VERSION README.md CHANGELOG.md
 
@@ -198,7 +204,14 @@ jobs:
           Copy-Item LICENSE dist\package\LICENSE
           Copy-Item VERSION dist\package\VERSION
           Copy-Item README.md dist\package\README.md
-          Copy-Item CHANGELOG.md dist\package\CHANGELOG.md
+          if (Test-Path CHANGELOG.md) {
+            Copy-Item CHANGELOG.md dist\package\CHANGELOG.md
+          } else {
+            Set-Content `
+              -Path dist\package\CHANGELOG.md `
+              -Encoding utf8 `
+              -Value "# Changelog`n`nNo repository changelog was present for this historical release."
+          }
 
           Compress-Archive `
             -Path dist\package\* `
@@ -264,11 +277,15 @@ jobs:
           set -euo pipefail
 
           version="${RELEASE_TAG#v}"
-          awk -v heading="## [$version]" '
-            capture && /^## / && $0 != heading { exit }
-            $0 == heading { capture = 1 }
-            capture { print }
-          ' CHANGELOG.md > dist/RELEASE_NOTES.md
+          if [[ -f CHANGELOG.md ]]; then
+            awk -v heading="## [$version]" '
+              capture && /^## / && $0 != heading { exit }
+              $0 == heading { capture = 1 }
+              capture { print }
+            ' CHANGELOG.md > dist/RELEASE_NOTES.md
+          else
+            : > dist/RELEASE_NOTES.md
+          fi
 
           if [[ ! -s dist/RELEASE_NOTES.md ]]; then
             gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
