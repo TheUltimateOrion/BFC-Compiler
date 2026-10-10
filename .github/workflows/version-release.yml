@@ -8,6 +8,7 @@ on:
       - VERSION
 
 permissions:
+  actions: write
   contents: write
 
 concurrency:
@@ -56,3 +57,8 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag --annotate "$tag" "$VERSION_COMMIT" --message "Release $tag"
           git push origin "$tag"
+
+          GH_TOKEN="${{ github.token }}" gh workflow run release.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref "$tag" \
+            --field tag="$tag"
