@@ -3450,9 +3450,7 @@ static bfc_error_t windows_x86_64_emit_end(bfc_asm_t* asm_prog)
         asm_prog, "\n"
                   "    xorl %eax, %eax\n"
                   "    movq 32(%rsp), %r12\n"
-                  "    .seh_startepilogue\n"
                   "    addq $40, %rsp\n"
-                  "    .seh_endepilogue\n"
                   "    retq\n"
                   "    .seh_endproc\n"
     );
