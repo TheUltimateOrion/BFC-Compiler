@@ -48,8 +48,8 @@ static bfc_error_t windows_x86_64_emit_symbol(bfc_asm_t* asm_prog)
 {
     return bfc_codegen_emit_text(
         asm_prog, ".text\n"
-              ".globl main\n"
-              ".def main; .scl 2; .type 32; .endef\n"
+                  ".globl main\n"
+                  ".def main; .scl 2; .type 32; .endef\n"
                   ".p2align 4\n"
                   "main:\n"
                   ".seh_proc main\n"
