@@ -740,6 +740,123 @@ current byte with zero and branch with `je` or `jne`.
 | `IR_SET` | Store an immediate byte |
 | Loop tests | Compare the byte with zero, then use `je` or `jne` |
 
+### Windows AArch64
+
+#### Target identity
+
+```text
+aarch64-pc-windows-msvc
+BFC_ARCH_AARCH64
+BFC_OS_WINDOWS
+PE/COFF
+GNU AArch64 syntax accepted by Clang's COFF assembler
+```
+
+#### Symbols and sections
+
+Windows ARM64 uses undecorated external C symbols:
+
+```asm
+main
+getchar
+putchar
+.bfc_tape
+```
+
+The tape uses a COFF local common symbol rather than emitted bytes in `.bss`:
+
+```asm
+.bss
+.lcomm .bfc_tape, 30000, 16
+```
+
+The tape address uses the Windows-compatible AArch64 page-relative relocation
+pair:
+
+```asm
+adrp x19, .bfc_tape
+add  x19, x19, :lo12:.bfc_tape
+```
+
+#### ABI and frame
+
+The backend follows the Microsoft ARM64 ABI. It reserves 32 bytes of outgoing
+shadow space, keeps the stack 16-byte aligned, preserves `x19` and `x30`, and
+emits `.seh_*` unwind directives for the prologue and epilogue. `x19` remains
+the tape pointer across CRT calls and `x16` is scratch storage.
+
+`getchar` returns an `int` in `w0`; EOF is converted to zero before storing the
+low byte. `putchar` receives the zero-extended current cell in `w0`.
+
+#### Lowering summary
+
+| IR operation | Strategy |
+|---|---|
+| `IR_ADD` | Load byte, add normalized immediate, store byte |
+| `IR_MOVE` | Direct immediate up to 4095; otherwise materialize in `x16` |
+| `IR_GET` | Call `getchar`, map EOF to zero, store low byte |
+| `IR_PUT` | Load byte into `w0`, call `putchar` |
+| `IR_SET` | Store `wzr` for zero or an immediate byte |
+| Loop tests | `cbz` and `cbnz` |
+
+### Windows x86-64
+
+#### Target identity
+
+```text
+x86_64-pc-windows-msvc
+BFC_ARCH_X86_64
+BFC_OS_WINDOWS
+PE/COFF
+GNU AT&T syntax accepted by Clang's COFF assembler
+```
+
+#### Symbols and sections
+
+Windows x86-64 uses undecorated external C symbols:
+
+```asm
+main
+getchar
+putchar
+.bfc_tape
+```
+
+The tape is declared as a local COFF common symbol:
+
+```asm
+.bss
+.lcomm .bfc_tape, 30000, 16
+```
+
+The tape address uses RIP-relative addressing:
+
+```asm
+leaq .bfc_tape(%rip), %r12
+```
+
+#### ABI and frame
+
+The backend follows the Microsoft x64 ABI. It reserves 32 bytes of outgoing
+shadow space plus alignment padding, preserves `r12`, and emits `.seh_*`
+unwind directives. `r12` is the tape pointer and `r11` is scratch storage for
+large pointer offsets. The first integer argument to `putchar` is passed in
+`ecx`.
+
+`getchar` returns an `int` in `eax`; EOF is converted to zero before storing
+`al`. `putchar` receives a zero-extended current cell in `ecx`.
+
+#### Lowering summary
+
+| IR operation | Strategy |
+|---|---|
+| `IR_ADD` | Add a normalized byte immediate to the current cell |
+| `IR_MOVE` | Direct signed immediate when encodable; otherwise use `r11` |
+| `IR_GET` | Call `getchar`, map EOF to zero, store `al` |
+| `IR_PUT` | Zero-extend the byte into `ecx`, call `putchar` |
+| `IR_SET` | Store an immediate byte |
+| Loop tests | Compare the byte with zero, then use `je` or `jne` |
+
 ## Platform-specific requirements
 
 ### macOS
@@ -758,6 +875,16 @@ current byte with zero and branch with `je` or `jne`.
 - AArch64 normally follows AAPCS64
 - ELF section and relocation syntax must be used
 - Position-independent executable defaults may affect address materialization and linking
+
+### Windows
+
+- Object format: PE/COFF
+- C symbols are undecorated for the x86-64 and ARM64 MSVC targets
+- The Microsoft x64 and ARM64 ABIs require outgoing shadow space
+- Stack alignment and callee-saved registers must be preserved across CRT calls
+- `.seh_*` directives describe unwindable prologues and epilogues
+- COFF BSS storage uses `.lcomm` so no initialized bytes are emitted into `.bss`
+- Generated assembly is cross-assembled with Clang in the build workflow
 
 The Linux backends currently emit assembly and do not invoke the linker
 themselves. A Linux toolchain must provide the target assembler and C runtime

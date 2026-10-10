@@ -49,11 +49,13 @@ jobs:
           - name: Windows x86-64
             runner: windows-2025
             platform: windows
+            target: x86_64-pc-windows-msvc
             archive: bfc-windows-x86_64.zip
 
           - name: Windows ARM64
             runner: windows-11-arm
             platform: windows
+            target: aarch64-pc-windows-msvc
             archive: bfc-windows-arm64.zip
 
     steps:
@@ -138,6 +140,27 @@ jobs:
 
           if ($LASTEXITCODE -ne 0) {
             throw "Clang failed with exit code $LASTEXITCODE"
+          }
+
+          $assembly = Join-Path $env:RUNNER_TEMP "bfc_windows.s"
+          $object = Join-Path $env:RUNNER_TEMP "bfc_windows.obj"
+          & build\release\bfc.exe `
+            -S `
+            -t "${{ matrix.target }}" `
+            tests\hello.bf `
+            -o $assembly
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Windows assembly generation failed with exit code $LASTEXITCODE"
+          }
+
+          & clang `
+            -target "${{ matrix.target }}" `
+            -c $assembly `
+            -o $object
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Windows assembly validation failed with exit code $LASTEXITCODE"
           }
 
           Copy-Item build\release\bfc.exe dist\package\bfc.exe
