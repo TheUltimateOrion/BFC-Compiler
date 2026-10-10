@@ -27,6 +27,7 @@ jobs:
 
     outputs:
       release_tag: ${{ steps.release-tag.outputs.tag }}
+      has_version: ${{ steps.validate-version.outputs.has_version }}
 
     steps:
       - name: Resolve release tag
@@ -57,6 +58,7 @@ jobs:
           ref: ${{ steps.release-tag.outputs.tag }}
 
       - name: Validate tag and VERSION
+        id: validate-version
         shell: bash
         env:
           RELEASE_TAG: ${{ steps.release-tag.outputs.tag }}
@@ -69,6 +71,7 @@ jobs:
           fi
 
           if [[ -f VERSION ]]; then
+            echo "has_version=true" >> "$GITHUB_OUTPUT"
             version="$(tr -d '[:space:]' < VERSION)"
 
             if [[ "$RELEASE_TAG" != "v$version" ]]; then
@@ -76,12 +79,14 @@ jobs:
               exit 1
             fi
           else
+            echo "has_version=false" >> "$GITHUB_OUTPUT"
             echo "VERSION is absent at $RELEASE_TAG; using the tag as the release version."
           fi
 
   build:
     name: ${{ matrix.name }}
     needs: validate
+    if: needs.validate.outputs.has_version == 'true'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 20
 
@@ -235,6 +240,9 @@ jobs:
     needs:
       - validate
       - build
+    if: >-
+      always() && needs.validate.result == 'success' &&
+      (needs.build.result == 'success' || needs.build.result == 'skipped')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
 
@@ -245,6 +253,7 @@ jobs:
           ref: ${{ needs.validate.outputs.release_tag }}
 
       - name: Download release packages
+        if: needs.build.result == 'success'
         uses: actions/download-artifact@v8
         with:
           pattern: release-*
@@ -252,6 +261,7 @@ jobs:
           merge-multiple: true
 
       - name: Verify assets and generate checksums
+        if: needs.build.result == 'success'
         shell: bash
         run: |
           set -euo pipefail
@@ -309,17 +319,27 @@ jobs:
 
           if gh release view "$RELEASE_TAG" \
             --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$RELEASE_TAG" dist/bfc-* dist/SHA256SUMS \
-              --repo "$GITHUB_REPOSITORY" \
-              --clobber
+            if [[ "${{ needs.build.result }}" == "success" ]]; then
+              gh release upload "$RELEASE_TAG" dist/bfc-* dist/SHA256SUMS \
+                --repo "$GITHUB_REPOSITORY" \
+                --clobber
+            fi
             gh release edit "$RELEASE_TAG" \
               --repo "$GITHUB_REPOSITORY" \
               --notes-file dist/RELEASE_NOTES.md \
               --title "BFC $RELEASE_TAG"
           else
-            gh release create "$RELEASE_TAG" dist/bfc-* dist/SHA256SUMS \
-              --repo "$GITHUB_REPOSITORY" \
-              --verify-tag \
-              --title "BFC $RELEASE_TAG" \
-              --notes-file dist/RELEASE_NOTES.md
+            if [[ "${{ needs.build.result }}" == "success" ]]; then
+              gh release create "$RELEASE_TAG" dist/bfc-* dist/SHA256SUMS \
+                --repo "$GITHUB_REPOSITORY" \
+                --verify-tag \
+                --title "BFC $RELEASE_TAG" \
+                --notes-file dist/RELEASE_NOTES.md
+            else
+              gh release create "$RELEASE_TAG" \
+                --repo "$GITHUB_REPOSITORY" \
+                --verify-tag \
+                --title "BFC $RELEASE_TAG" \
+                --notes-file dist/RELEASE_NOTES.md
+            fi
           fi
