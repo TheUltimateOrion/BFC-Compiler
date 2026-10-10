@@ -2219,6 +2219,16 @@ static const bfc_backend_t* bfc_backend_select(bfc_target_t target)
         return &BFC_BACKEND_LINUX_X86_64;
     }
 
+    if (target.arch == BFC_ARCH_AARCH64 && target.os == BFC_OS_WINDOWS)
+    {
+        return &BFC_BACKEND_WINDOWS_AARCH64;
+    }
+
+    if (target.arch == BFC_ARCH_X86_64 && target.os == BFC_OS_WINDOWS)
+    {
+        return &BFC_BACKEND_WINDOWS_X86_64;
+    }
+
     return nullptr;
 }
 
@@ -3390,6 +3400,366 @@ const bfc_backend_t BFC_BACKEND_LINUX_X86_64 = {
     .emit_op_set       = linux_x86_64_emit_op_set,
     .emit_loop_test_z  = linux_x86_64_emit_loop_test_z,
     .emit_loop_test_nz = linux_x86_64_emit_loop_test_nz,
+};
+
+/* ==========================================================================
+ * bfc_backend_windows_x86_64.c
+ * ========================================================================== */
+/** @internal Materializes a full-width unsigned immediate in `r11`. */
+static bfc_error_t windows_x86_64_emit_load_u64(bfc_asm_t* asm_prog, uint64_t value)
+{
+    return bfc_codegen_emitf(asm_prog, "    movabsq $0x%016" PRIx64 ", %%r11\n", value);
+}
+
+/** @internal Emits Windows x86-64 text-section directives. */
+static bfc_error_t windows_x86_64_emit_header(bfc_asm_t* asm_prog)
+{
+    return bfc_codegen_emit_text(asm_prog, ".text\n.p2align 4\n");
+}
+
+/** @internal Declares the Windows x86-64 BSS tape. */
+static bfc_error_t windows_x86_64_emit_data_section(bfc_asm_t* asm_prog)
+{
+    return bfc_codegen_emitf(asm_prog, ".bss\n.lcomm .bfc_tape, %zu, 16\n", BFC_TAPE_SIZE);
+}
+
+/** @internal Emits the Windows x64 prologue and tape address. */
+static bfc_error_t windows_x86_64_emit_symbol(bfc_asm_t* asm_prog)
+{
+    return bfc_codegen_emit_text(
+        asm_prog, ".text\n"
+                  ".globl main\n"
+                  ".def main; .scl 2; .type 32; .endef\n"
+                  ".p2align 4\n"
+                  "main:\n"
+                  ".seh_proc main\n"
+                  "    subq $40, %rsp\n"
+                  "    .seh_stackalloc 40\n"
+                  "    movq %r12, 32(%rsp)\n"
+                  "    .seh_savereg %r12, 32\n"
+                  "    .seh_endprologue\n"
+                  "\n"
+                  "    leaq .bfc_tape(%rip), %r12\n"
+    );
+}
+
+/** @internal Emits the Windows x64 epilogue. */
+static bfc_error_t windows_x86_64_emit_end(bfc_asm_t* asm_prog)
+{
+    return bfc_codegen_emit_text(
+        asm_prog, "\n"
+                  "    xorl %eax, %eax\n"
+                  "    movq 32(%rsp), %r12\n"
+                  "    .seh_startepilogue\n"
+                  "    addq $40, %rsp\n"
+                  "    .seh_endepilogue\n"
+                  "    retq\n"
+                  "    .seh_endproc\n"
+    );
+}
+
+/** @internal Lowers Windows x86-64 byte-cell addition. */
+static bfc_error_t windows_x86_64_emit_op_add(bfc_asm_t* asm_prog, int64_t imm)
+{
+    const uint8_t normalized = (uint8_t) imm;
+
+    if (normalized == 0)
+    {
+        return BFC_ERR_OK;
+    }
+
+    return bfc_codegen_emitf(asm_prog, "    addb $%u, (%%r12)\n", (unsigned) normalized);
+}
+
+/** @internal Moves the Windows x86-64 tape pointer. */
+static bfc_error_t windows_x86_64_emit_op_move(bfc_asm_t* asm_prog, int64_t imm)
+{
+    if (imm == 0)
+    {
+        return BFC_ERR_OK;
+    }
+
+    const uint64_t magnitude = imm < 0 ? UINT64_C(0) - (uint64_t) imm : (uint64_t) imm;
+
+    if (magnitude <= INT32_MAX)
+    {
+        return bfc_codegen_emitf(
+            asm_prog, imm < 0 ? "    subq $%" PRIu64 ", %%r12\n" : "    addq $%" PRIu64 ", %%r12\n",
+            magnitude
+        );
+    }
+
+    bfc_error_t err = windows_x86_64_emit_load_u64(asm_prog, magnitude);
+
+    if (err.code != ERR_OK)
+    {
+        return err;
+    }
+
+    return bfc_codegen_emit_text(
+        asm_prog, imm < 0 ? "    subq %r11, %r12\n" : "    addq %r11, %r12\n"
+    );
+}
+
+/** @internal Calls Windows x86-64 `getchar` and stores one byte. */
+static bfc_error_t windows_x86_64_emit_op_get(bfc_asm_t* asm_prog)
+{
+    return bfc_codegen_emit_text(
+        asm_prog, "    callq getchar\n"
+                  "    xorl %edx, %edx\n"
+                  "    cmpl $-1, %eax\n"
+                  "    cmove %edx, %eax\n"
+                  "    movb %al, (%r12)\n"
+    );
+}
+
+/** @internal Calls Windows x86-64 `putchar` with a zero-extended cell. */
+static bfc_error_t windows_x86_64_emit_op_put(bfc_asm_t* asm_prog)
+{
+    return bfc_codegen_emit_text(
+        asm_prog, "    movzbl (%r12), %ecx\n"
+                  "    callq putchar\n"
+    );
+}
+
+/** @internal Stores a normalized byte value on Windows x86-64. */
+static bfc_error_t windows_x86_64_emit_op_set(bfc_asm_t* asm_prog, int64_t imm)
+{
+    return bfc_codegen_emitf(asm_prog, "    movb $%u, (%%r12)\n", (unsigned) (uint8_t) imm);
+}
+
+/** @internal Tests a Windows x86-64 cell for zero. */
+static bfc_error_t windows_x86_64_emit_loop_test_z(bfc_asm_t* asm_prog, const char* label)
+{
+    return bfc_codegen_emitf(asm_prog, "    cmpb $0, (%%r12)\n    je %s\n", label);
+}
+
+/** @internal Tests a Windows x86-64 cell for nonzero. */
+static bfc_error_t windows_x86_64_emit_loop_test_nz(bfc_asm_t* asm_prog, const char* label)
+{
+    return bfc_codegen_emitf(asm_prog, "    cmpb $0, (%%r12)\n    jne %s\n", label);
+}
+
+/** @brief Immutable Windows x86-64 backend descriptor. */
+const bfc_backend_t BFC_BACKEND_WINDOWS_X86_64 = {
+    .target = {
+        .arch = BFC_ARCH_X86_64,
+        .os   = BFC_OS_WINDOWS,
+    },
+    .emit_header       = windows_x86_64_emit_header,
+    .emit_data_section = windows_x86_64_emit_data_section,
+    .emit_symbol       = windows_x86_64_emit_symbol,
+    .emit_end          = windows_x86_64_emit_end,
+    .emit_op_add       = windows_x86_64_emit_op_add,
+    .emit_op_move      = windows_x86_64_emit_op_move,
+    .emit_op_get       = windows_x86_64_emit_op_get,
+    .emit_op_put       = windows_x86_64_emit_op_put,
+    .emit_op_set       = windows_x86_64_emit_op_set,
+    .emit_loop_test_z  = windows_x86_64_emit_loop_test_z,
+    .emit_loop_test_nz = windows_x86_64_emit_loop_test_nz,
+};
+
+/* ==========================================================================
+ * bfc_backend_windows_aarch64.c
+ * ========================================================================== */
+/** @internal Materializes a 64-bit unsigned immediate in `x16`. */
+static bfc_error_t windows_aarch64_emit_load_u64(bfc_asm_t* asm_prog, uint64_t value)
+{
+    bfc_error_t err
+        = bfc_codegen_emitf(asm_prog, "    movz x16, #%u\n", (unsigned) (value & UINT64_C(0xffff)));
+
+    if (err.code != ERR_OK)
+    {
+        return err;
+    }
+
+    for (uint16_t shift = 16; shift < 64; shift += 16)
+    {
+        const uint16_t part = (uint16_t) ((value >> shift) & UINT64_C(0xffff));
+
+        if (part == 0)
+        {
+            continue;
+        }
+
+        err = bfc_codegen_emitf(
+            asm_prog, "    movk x16, #%u, lsl #%u\n", (unsigned) part, (unsigned) shift
+        );
+
+        if (err.code != ERR_OK)
+        {
+            return err;
+        }
+    }
+
+    return BFC_ERR_OK;
+}
+
+/** @internal Emits Windows AArch64 text-section directives. */
+static bfc_error_t windows_aarch64_emit_header(bfc_asm_t* asm_prog)
+{
+    return bfc_codegen_emit_text(asm_prog, ".text\n.p2align 2\n");
+}
+
+/** @internal Declares the Windows AArch64 BSS tape. */
+static bfc_error_t windows_aarch64_emit_data_section(bfc_asm_t* asm_prog)
+{
+    return bfc_codegen_emitf(asm_prog, ".bss\n.lcomm .bfc_tape, %zu, 16\n", BFC_TAPE_SIZE);
+}
+
+/** @internal Emits the Windows ARM64 prologue and tape address. */
+static bfc_error_t windows_aarch64_emit_symbol(bfc_asm_t* asm_prog)
+{
+    return bfc_codegen_emit_text(
+        asm_prog, ".text\n"
+                  ".globl main\n"
+                  ".def main; .scl 2; .type 32; .endef\n"
+                  ".p2align 2\n"
+                  "main:\n"
+                  ".seh_proc main\n"
+                  "    sub sp, sp, #48\n"
+                  "    .seh_stackalloc 48\n"
+                  "    stp x19, x30, [sp, #32]\n"
+                  "    .seh_save_regp_x x19, 32\n"
+                  "    .seh_endprologue\n"
+                  "\n"
+                  "    adrp x19, .bfc_tape\n"
+                  "    add  x19, x19, :lo12:.bfc_tape\n"
+    );
+}
+
+/** @internal Emits the Windows ARM64 epilogue. */
+static bfc_error_t windows_aarch64_emit_end(bfc_asm_t* asm_prog)
+{
+    return bfc_codegen_emit_text(
+        asm_prog, "\n"
+                  "    mov w0, wzr\n"
+                  "    .seh_startepilogue\n"
+                  "    ldp x19, x30, [sp, #32]\n"
+                  "    .seh_save_regp_x x19, 32\n"
+                  "    add sp, sp, #48\n"
+                  "    .seh_stackalloc 48\n"
+                  "    .seh_endepilogue\n"
+                  "    ret\n"
+                  "    .seh_endfunclet\n"
+                  "    .seh_endproc\n"
+    );
+}
+
+/** @internal Lowers Windows AArch64 byte-cell addition. */
+static bfc_error_t windows_aarch64_emit_op_add(bfc_asm_t* asm_prog, int64_t imm)
+{
+    const uint8_t normalized = (uint8_t) imm;
+
+    if (normalized == 0)
+    {
+        return BFC_ERR_OK;
+    }
+
+    return bfc_codegen_emitf(
+        asm_prog,
+        "    ldrb w16, [x19]\n"
+        "    add  w16, w16, #%u\n"
+        "    strb w16, [x19]\n",
+        (unsigned) normalized
+    );
+}
+
+/** @internal Moves the Windows AArch64 tape pointer. */
+static bfc_error_t windows_aarch64_emit_op_move(bfc_asm_t* asm_prog, int64_t imm)
+{
+    if (imm == 0)
+    {
+        return BFC_ERR_OK;
+    }
+
+    const uint64_t magnitude = imm < 0 ? UINT64_C(0) - (uint64_t) imm : (uint64_t) imm;
+
+    if (magnitude <= 4095)
+    {
+        return bfc_codegen_emitf(
+            asm_prog,
+            imm < 0 ? "    sub x19, x19, #%" PRIu64 "\n" : "    add x19, x19, #%" PRIu64 "\n",
+            magnitude
+        );
+    }
+
+    bfc_error_t err = windows_aarch64_emit_load_u64(asm_prog, magnitude);
+
+    if (err.code != ERR_OK)
+    {
+        return err;
+    }
+
+    return bfc_codegen_emit_text(
+        asm_prog, imm < 0 ? "    sub x19, x19, x16\n" : "    add x19, x19, x16\n"
+    );
+}
+
+/** @internal Calls Windows AArch64 `getchar` and stores one byte. */
+static bfc_error_t windows_aarch64_emit_op_get(bfc_asm_t* asm_prog)
+{
+    return bfc_codegen_emit_text(
+        asm_prog, "    bl   getchar\n"
+                  "    cmn  w0, #1\n"
+                  "    csel w0, wzr, w0, eq\n"
+                  "    strb w0, [x19]\n"
+    );
+}
+
+/** @internal Calls Windows AArch64 `putchar`. */
+static bfc_error_t windows_aarch64_emit_op_put(bfc_asm_t* asm_prog)
+{
+    return bfc_codegen_emit_text(asm_prog, "    ldrb w0, [x19]\n    bl   putchar\n");
+}
+
+/** @internal Stores a normalized byte value on Windows AArch64. */
+static bfc_error_t windows_aarch64_emit_op_set(bfc_asm_t* asm_prog, int64_t imm)
+{
+    const uint8_t normalized = (uint8_t) imm;
+
+    if (normalized == 0)
+    {
+        return bfc_codegen_emit_text(asm_prog, "    strb wzr, [x19]\n");
+    }
+
+    return bfc_codegen_emitf(
+        asm_prog,
+        "    mov  w16, #%u\n"
+        "    strb w16, [x19]\n",
+        (unsigned) normalized
+    );
+}
+
+/** @internal Tests a Windows AArch64 cell for zero. */
+static bfc_error_t windows_aarch64_emit_loop_test_z(bfc_asm_t* asm_prog, const char* label)
+{
+    return bfc_codegen_emitf(asm_prog, "    ldrb w16, [x19]\n    cbz  w16, %s\n", label);
+}
+
+/** @internal Tests a Windows AArch64 cell for nonzero. */
+static bfc_error_t windows_aarch64_emit_loop_test_nz(bfc_asm_t* asm_prog, const char* label)
+{
+    return bfc_codegen_emitf(asm_prog, "    ldrb w16, [x19]\n    cbnz w16, %s\n", label);
+}
+
+/** @brief Immutable Windows AArch64 backend descriptor. */
+const bfc_backend_t BFC_BACKEND_WINDOWS_AARCH64 = {
+    .target = {
+        .arch = BFC_ARCH_AARCH64,
+        .os   = BFC_OS_WINDOWS,
+    },
+    .emit_header       = windows_aarch64_emit_header,
+    .emit_data_section = windows_aarch64_emit_data_section,
+    .emit_symbol       = windows_aarch64_emit_symbol,
+    .emit_end          = windows_aarch64_emit_end,
+    .emit_op_add       = windows_aarch64_emit_op_add,
+    .emit_op_move      = windows_aarch64_emit_op_move,
+    .emit_op_get       = windows_aarch64_emit_op_get,
+    .emit_op_put       = windows_aarch64_emit_op_put,
+    .emit_op_set       = windows_aarch64_emit_op_set,
+    .emit_loop_test_z  = windows_aarch64_emit_loop_test_z,
+    .emit_loop_test_nz = windows_aarch64_emit_loop_test_nz,
 };
 /* ==========================================================================
  * bfc.c
