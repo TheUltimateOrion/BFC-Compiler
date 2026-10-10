@@ -165,10 +165,9 @@ Each successful job uploads a packaged build artifact containing the compiler
 binary, `LICENSE`, and `VERSION`. Workflow artifacts are retained for 14 days.
 
 The workflow builds the `bfc` compiler executable for each host platform. This
-is separate from code-generation backend support. A Linux or Windows build of
-`bfc` does not imply that BFC can emit Linux or Windows assembly; only the
-targets listed as implemented under [Supported target triples](#supported-target-triples)
-are currently usable for code generation.
+is separate from code-generation backend support: only the targets listed as
+implemented under [Supported target triples](#supported-target-triples) are
+usable for code generation.
 
 
 ## Usage
