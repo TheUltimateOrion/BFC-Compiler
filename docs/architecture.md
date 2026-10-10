@@ -30,8 +30,13 @@ Current implemented backends:
 
 - `aarch64-apple-darwin`
 - `x86_64-apple-darwin`
+- `aarch64-unknown-linux-gnu`
+- `x86_64-unknown-linux-gnu`
+- `aarch64-pc-windows-msvc`
+- `x86_64-pc-windows-msvc`
 
-The target parser also recognizes Linux and Windows triples, but those targets remain unavailable until their backend objects are implemented and registered.
+The target parser also recognizes `i386-pc-windows-msvc`, but that target
+remains unavailable until its backend is implemented and registered.
 
 ## Compilation pipeline
 
@@ -168,6 +173,10 @@ Current backend files:
 
 - `bfc_backend_macos_aarch64.c`
 - `bfc_backend_macos_x86_64.c`
+- `bfc_backend_linux_aarch64.c`
+- `bfc_backend_linux_x86_64.c`
+- `bfc_backend_windows_aarch64.c`
+- `bfc_backend_windows_x86_64.c`
 
 Backends own assembly syntax, symbol naming, ABI rules, register use, immediate lowering, sections, and branch syntax.
 

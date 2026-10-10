@@ -14,8 +14,10 @@ BFC currently supports assembly generation for:
 - `x86_64-apple-darwin`
 - `aarch64-unknown-linux-gnu`
 - `x86_64-unknown-linux-gnu`
+- `aarch64-pc-windows-msvc`
+- `x86_64-pc-windows-msvc`
 
-The target parser also recognizes Windows target triples, but those backends are
+The target parser also recognizes `i386-pc-windows-msvc`, but that backend is
 not yet implemented.
 
 The compiler currently emits assembly with `-S`. The final assemble-and-link stage that produces a native executable is planned but not yet complete.
@@ -34,6 +36,8 @@ The compiler currently emits assembly with `-S`. The final assemble-and-link sta
 - Target-triple selection
 - macOS AArch64 backend
 - macOS x86-64 backend
+- Windows AArch64 backend
+- Windows x86-64 backend
 - AddressSanitizer-enabled debug builds
 - Doxygen-compatible source documentation
 
@@ -45,7 +49,8 @@ To build BFC:
   - Clang is currently the primary tested compiler
   - GCC may work if it supports the required C23 and GNU attribute features
 - GNU Make or a compatible `make`
-- macOS or Linux for executing and linking the currently implemented backends
+- macOS, Linux, or Windows for executing and linking the currently implemented
+  backends
 
 Optional:
 
@@ -160,10 +165,9 @@ Each successful job uploads a packaged build artifact containing the compiler
 binary, `LICENSE`, and `VERSION`. Workflow artifacts are retained for 14 days.
 
 The workflow builds the `bfc` compiler executable for each host platform. This
-is separate from code-generation backend support. A Linux or Windows build of
-`bfc` does not imply that BFC can emit Linux or Windows assembly; only the
-targets listed as implemented under [Supported target triples](#supported-target-triples)
-are currently usable for code generation.
+is separate from code-generation backend support: only the targets listed as
+implemented under [Supported target triples](#supported-target-triples) are
+usable for code generation.
 
 
 ## Usage
@@ -261,8 +265,8 @@ For complete CLI documentation, see [`docs/cli.md`](docs/cli.md).
 | `x86_64-apple-darwin` | Implemented |
 | `aarch64-unknown-linux-gnu` | Implemented |
 | `x86_64-unknown-linux-gnu` | Implemented |
-| `aarch64-pc-windows-msvc` | Recognized; backend not implemented |
-| `x86_64-pc-windows-msvc` | Recognized; backend not implemented |
+| `aarch64-pc-windows-msvc` | Implemented |
+| `x86_64-pc-windows-msvc` | Implemented |
 | `i386-pc-windows-msvc` | Recognized; backend not implemented |
 
 If no target is supplied, BFC selects the host architecture and operating system.

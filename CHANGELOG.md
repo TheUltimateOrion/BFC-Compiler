@@ -2,6 +2,11 @@
 
 All notable changes to BFC are documented here.
 
+## [Unreleased]
+
+- Added Windows AArch64 and x86-64 PE/COFF assembly backends.
+- Added Windows ABI and COFF assembly validation to the build workflow.
+
 ## [0.2.0]
 
 - Added Linux AArch64 and x86-64 ELF assembly backends.

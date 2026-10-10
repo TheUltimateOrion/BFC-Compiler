@@ -46,6 +46,16 @@ static const bfc_backend_t* bfc_backend_select(bfc_target_t target)
         return &BFC_BACKEND_LINUX_X86_64;
     }
 
+    if (target.arch == BFC_ARCH_AARCH64 && target.os == BFC_OS_WINDOWS)
+    {
+        return &BFC_BACKEND_WINDOWS_AARCH64;
+    }
+
+    if (target.arch == BFC_ARCH_X86_64 && target.os == BFC_OS_WINDOWS)
+    {
+        return &BFC_BACKEND_WINDOWS_X86_64;
+    }
+
     return nullptr;
 }
 
