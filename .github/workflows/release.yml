@@ -290,6 +290,7 @@ jobs:
         run: |
           set -euo pipefail
 
+          mkdir -p dist
           version="${RELEASE_TAG#v}"
           if [[ -f CHANGELOG.md ]]; then
             awk -v heading="## [$version]" '
