@@ -63,16 +63,20 @@ jobs:
         run: |
           set -euo pipefail
 
-          version="$(tr -d '[:space:]' < VERSION)"
-
           if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
             echo "error: release tag is not a valid version tag: $RELEASE_TAG" >&2
             exit 1
           fi
 
-          if [[ "$RELEASE_TAG" != "v$version" ]]; then
-            echo "error: tag $RELEASE_TAG does not match VERSION ($version)" >&2
-            exit 1
+          if [[ -f VERSION ]]; then
+            version="$(tr -d '[:space:]' < VERSION)"
+
+            if [[ "$RELEASE_TAG" != "v$version" ]]; then
+              echo "error: tag $RELEASE_TAG does not match VERSION ($version)" >&2
+              exit 1
+            fi
+          else
+            echo "VERSION is absent at $RELEASE_TAG; using the tag as the release version."
           fi
 
   build:
