@@ -313,6 +313,10 @@ Generate Doxygen HTML documentation with:
 make docs
 ```
 
+Doxygen includes the project README, changelog, and documentation guides. It uses
+GitHub-style Markdown heading anchors so table-of-contents links work in both
+outputs.
+
 Generated documentation is written to:
 
 ```text

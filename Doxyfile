@@ -1,7 +1,7 @@
 PROJECT_NAME           = "BFC-Compiler"
 PROJECT_BRIEF          = "A C23 Brainfuck compiler"
 OUTPUT_DIRECTORY       = docs/doxygen
-INPUT                  = include src docs
+INPUT                  = README.md CHANGELOG.md include src docs
 FILE_PATTERNS          = *.h *.c *.md
 RECURSIVE              = YES
 USE_MDFILE_AS_MAINPAGE = docs/architecture.md
@@ -11,6 +11,7 @@ EXTRACT_STATIC         = YES
 INTERNAL_DOCS          = YES
 JAVADOC_AUTOBRIEF      = YES
 MARKDOWN_SUPPORT       = YES
+MARKDOWN_ID_STYLE      = GITHUB
 AUTOLINK_SUPPORT       = YES
 WARNINGS               = YES
 WARN_IF_UNDOCUMENTED   = NO

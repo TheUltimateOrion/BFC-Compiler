@@ -4,7 +4,7 @@
 
 ## Table of contents
 
-- [Purpose](#purpose)
+- [Backend guide purpose](#backend-guide-purpose)
 - [What a backend represents](#what-a-backend-represents)
 - [Where a backend fits](#where-a-backend-fits)
 - [Backend contract](#backend-contract)
@@ -26,7 +26,7 @@
 - [Acceptance checklist](#acceptance-checklist)
 - [Common implementation mistakes](#common-implementation-mistakes)
 
-## Purpose
+## Backend guide purpose
 
 A backend converts generic Brainfuck IR into assembly for one exact architecture and operating-system combination.
 

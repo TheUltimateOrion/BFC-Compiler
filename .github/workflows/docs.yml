@@ -8,6 +8,8 @@ on:
       - "include/**"
       - "src/**"
       - "docs/**"
+      - "README.md"
+      - "CHANGELOG.md"
       - "Doxyfile"
       - "Makefile"
       - ".github/workflows/docs.yml"

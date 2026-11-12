@@ -34,9 +34,9 @@ bfc_error_t bfc_codegen(bfc_asm_t** out_asm, const bfc_ir_block_t* ir_block, bfc
 /**
  * @brief Releases an assembly object and nulls the caller pointer.
  *
- * @param[in,out] asm_prog Address of the owned assembly pointer.
+ * @param[in,out] pasm_prog Address of the owned assembly pointer.
  */
-void bfc_asm_destroy(bfc_asm_t** asm_prog);
+void bfc_asm_destroy(bfc_asm_t** pasm_prog);
 
 /**
  * @brief Writes generated assembly bytes to a file.
